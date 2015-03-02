@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/j2se-lib"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/PalCom"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/J2SE-1.5"/>
+	<classpathentry kind="lib" path="lib/swing-layout-1.0.4.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/swing-worker-1.2.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/PalcomUtils"/>
+	<classpathentry kind="lib" path="lib/dockingFramesCommon.jar"/>
+	<classpathentry kind="lib" path="lib/dockingFramesCore.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

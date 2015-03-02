@@ -1,0 +1,70 @@
+package se.lth.cs.palcom.browsergui.dnd;
+
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.io.IOException;
+
+import javax.swing.JComponent;
+import javax.swing.TransferHandler;
+
+import se.lth.cs.palcom.browsergui.views.GraphEditor;
+import se.lth.cs.palcom.discovery.DeviceProxy;
+import se.lth.cs.palcom.discovery.proxy.PalcomServiceList;
+import se.lth.cs.palcom.discovery.proxy.Resource;
+
+public class AssemblyGraphTransferHandler extends TransferHandler{
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	@Override
+    public boolean importData(JComponent comp, Transferable t) {
+		try {
+			Object data = t.getTransferData(new DataFlavor(Resource.class, "resource"));
+			if (!(data instanceof DeviceProxy)) { 
+				return false;
+			} 		
+			DeviceProxy res = (DeviceProxy)data;
+			
+			PalcomServiceList services = res.getServiceList();
+			
+			for(int i=0;i<services.getNumService();i++){
+				System.out.println(services.getService(i).getName() + "    " + services.getService(i).getAddress());
+//				services.getService(0).
+			}
+			
+			if(((GraphEditor)comp).addDevice(res)){
+				System.out.println("Added : "+res.getName());
+			} else {
+				System.out.println("Failed to add. Already in workspace!");
+			}
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+    }
+
+    @Override
+    public boolean canImport(TransferSupport support) {
+    	Object data;
+		try {
+			data = support.getTransferable().getTransferData(new DataFlavor(Resource.class, "resource"));
+			if (!(data instanceof DeviceProxy)) { 
+				return false;
+			} 
+            return true;
+		} catch (UnsupportedFlavorException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return false;
+		
+    }
+}
