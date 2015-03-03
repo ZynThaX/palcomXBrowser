@@ -6,6 +6,8 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
+import se.lth.cs.palcom.discovery.ServiceDescriptionProxy;
+import se.lth.cs.palcom.discovery.ServiceProxy;
 import se.lth.cs.palcom.discovery.proxy.Resource;
 
 public class XMLViewPanel extends JPanel implements BrowserSelectionListener {
@@ -18,6 +20,16 @@ public class XMLViewPanel extends JPanel implements BrowserSelectionListener {
 	}
 
 	public void resourceSelected(Resource r) {
+		System.out.println(r.getClass());
+		if(r instanceof ServiceDescriptionProxy){
+			ServiceDescriptionProxy sdp = (ServiceDescriptionProxy) r;
+//			sdp.findCommand(0)
+			System.out.println(sdp.toString());
+		}else if(r instanceof ServiceProxy){
+			ServiceProxy sp = (ServiceProxy) r;
+			
+//			sp.getDescription()
+		}
 		xml.setText(r.toString());
 	}
 }

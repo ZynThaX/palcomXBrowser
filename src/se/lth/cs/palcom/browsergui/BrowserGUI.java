@@ -110,6 +110,8 @@ public class BrowserGUI implements BrowserApplication, AssemblyDirectory {
         //mnuLogTab.setText("Log tab");
         //mnuLogging.add(mnuLogTab);
         
+        Logger.setLevel(Logger.LEVEL_ERROR);
+        
         JMenuItem bulk = new JMenuItem("Bulk");
         bulk.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
