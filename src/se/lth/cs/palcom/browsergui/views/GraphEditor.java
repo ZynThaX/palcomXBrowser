@@ -1,26 +1,28 @@
 package se.lth.cs.palcom.browsergui.views;
 
 
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.DropTargetDragEvent;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.HashSet;
+import java.util.TreeMap;
 
-import javax.swing.ImageIcon;
-import javax.swing.JComponent;
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.border.Border;
 
 import org.w3c.dom.Element;
 
+import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
+import se.lth.cs.palcom.browsergui.dnd.GraphServiceTree;
 import se.lth.cs.palcom.discovery.DeviceProxy;
 
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
 import com.mxgraph.swing.mxGraphComponent;
-import com.mxgraph.swing.handler.mxGraphHandler;
-import com.mxgraph.swing.handler.mxGraphTransferHandler;
-import com.mxgraph.swing.util.mxGraphTransferable;
-import com.mxgraph.util.mxRectangle;
+import com.mxgraph.swing.handler.mxKeyboardHandler;
 import com.mxgraph.view.mxGraph;
 
 
@@ -30,10 +32,13 @@ public class GraphEditor extends JPanel{
 	private HashSet<DeviceProxy> devices;
 	private String assemblyData;
 	private mxGraph graph;
+	private TreeMap<String,GraphServiceTree> graphServiceTrees;
+	
 	/**
 	 * Creates a graph editor for the assemblies
 	 */	
 	public GraphEditor(){
+		
 //		this.setPreferredSize(new Dimension(800, 600));
 		graph = new mxGraph(){
 			public boolean isPort(Object cell)
@@ -74,88 +79,54 @@ public class GraphEditor extends JPanel{
 			}		
 			
 		};
-
+		
+		graphServiceTrees = new TreeMap<String, GraphServiceTree>();
 		final mxGraphComponent graphComponent = new mxGraphComponent(graph);
-//		new mxKeyboardHandler(graphComponent);
-//		
-//		graphComponent.getGraphControl().addMouseListener(new MouseAdapter()
-//		{
-//			public void mouseReleased(MouseEvent e)
-//			{
-//				mxCell cell = (mxCell)graphComponent.getCellAt(e.getX(), e.getY());
-//
-//		        
-//				if (cell != null && graph.getLabel(cell).equalsIgnoreCase("+")){
-////					AddFunctionPop menu = new AddFunctionPop(cell);
-////					System.out.println(menu.getWidth()/2);
-//					
-//					
-////					menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
-//				
-//				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")){
-////			        RemoveCellPop menu = new RemoveCellPop(cell);
-//			        
-//	                
-////			        menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
-//				}
-//			}
-//		});
+		new mxKeyboardHandler(graphComponent);
 		
-//		setLayout(new BorderLayout());
-//		.add(graphComponent);
-//		System.out.println("sdalfas " + this.getParent().getCl);
-//		this.getParent().setLayout(new BorderLayout());
-		
-		graphComponent.setTransferHandler(new mxGraphTransferHandler (){
-			public boolean canImport(JComponent comp, DataFlavor[] flavors){
-				System.out.println(" -INSIDE");
-				return true;
-				
+		graphComponent.getGraphControl().addMouseListener(new MouseAdapter(){
+			public void mouseReleased(MouseEvent e){
+				mxCell cell = (mxCell)graphComponent.getCellAt(e.getX(), e.getY());
+				if (cell != null && graph.getLabel(cell).equalsIgnoreCase("+")){
+					
+					GraphServiceTree gST = graphServiceTrees.get(cell.getParent().getId());
+					if(gST != null){
+						System.out.println("INside");
+						gST.printTree(e.getComponent(), e.getX(), e.getY());
+					}
+					
+				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")){
+//					TODO, rightclick
+				}
 			}
-			public boolean	importData(JComponent c, Transferable t){
-				System.out.println(" -INSIDE 2");
-				return false;
-			}
-			public Transferable createTransferable(JComponent c){
-				System.out.println(" -INSIDE 3");
-				
-				return lastImported;
-				
-			}
-			public mxGraphTransferable	createGraphTransferable(mxGraphComponent graphComponent, Object[] cells, ImageIcon icon){
-				System.out.println(" -INSIDE 4");
-				return null;
-			}
-			
-			public mxGraphTransferable	createGraphTransferable(mxGraphComponent graphComponent, Object[] cells, mxRectangle bounds, ImageIcon icon){
-				System.out.println(" -INSIDE 5");
-				return null;
-			}
-			public Object getTransferData(DataFlavor flavor){
-		       System.out.println(" -Inside 6");
-		       return null;
-		    }
 		});
+		
 
 		
-//		graphComponent.setTransferHandler(new AssemblyGraphTransferHandler());
-////		new mxGraphHandler();
-		mxGraphHandler gh = new mxGraphHandler(graphComponent){
-			public void dragEnter(DropTargetDragEvent e){
-				System.out.println("HEJEJJEJEJE");
-				System.out.println(e.getSource());
-			}
-		};
-//		gh.setEnabled(false);
-//		gh.setMoveEnabled(false);
-//		gh.setImagePreview(false) ;
-//		gh.setLivePreview(false)  ;
-//		gh.setMarkerEnabled(false) ;
-//		gh.setSelectEnabled(false) ;
-//		graph.set
+		graph.setHtmlLabels(true);
+		graph.setAllowDanglingEdges(false);
+		graph.setCellsDeletable(true);
+		graph.setCellsResizable(false);;
 		
-//		gh.
-//		graphComponent.
+		setLayout(new BorderLayout());
+	    
+		add(graphComponent,BorderLayout.CENTER);
+		JLabel dropArea = new JLabel("<html>Drop<br>device<br>here</html>");
+		
+		Border paddingBorder = BorderFactory.createEmptyBorder(10,10,10,10);
+		//JLabel will be involved for this border
+		Border border = BorderFactory.createLineBorder(Color.BLUE);
+
+		dropArea.setBorder(BorderFactory.createCompoundBorder(border,paddingBorder));
+		
+		dropArea.setBackground(Color.WHITE);
+		dropArea.setOpaque(true);
+//		dropArea.setForeground(Color.WHITE);
+//		droparea.set
+		dropArea.setTransferHandler(new AssemblyGraphTransferHandler(this));
+		add(dropArea,BorderLayout.WEST);
+		
+		graphComponent.setToolTips(true);
 		
 		this.add(graphComponent);
 //		graphComponent.setTr
@@ -194,18 +165,15 @@ public class GraphEditor extends JPanel{
 		//TODO implement this function
 	}
 
-	public void test() {
-		System.out.println("  -" +this.getClass());
-		System.out.println("  -" +this.getParent().getClass());
-		int x = (int)this.getMousePosition().getX();
-		int y = (int)this.getMousePosition().getY();
-
-		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>"+"BLAH"+"</b>", x,y, 80, 30, "verticalAlign=top;textAlign=center");
-		cell.setConnectable(false);
-		
-		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 80, 20);
-		graph.refresh();
+	public mxGraph getGraph() {
+		return graph;
 	}
+
+	public void addGraphServiceTree(String key, GraphServiceTree gST) {
+		// TODO Auto-generated method stub
+		graphServiceTrees.put(key, gST);
+	}
+
 	
 	
 }

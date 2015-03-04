@@ -84,7 +84,7 @@ public class BrowserFrame extends JFrame implements LogListener, BrowserSelectio
         XMLViewPanel xmlp = new XMLViewPanel();
         btp.addSelectionListener(xmlp);
         btp.addSelectionListener(this);
-
+        
         eventLog = new JTextArea();
         eventLog.setColumns(20);
         eventLog.setRows(5);

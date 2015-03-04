@@ -9,6 +9,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.swing.JComponent;
+import javax.swing.TransferHandler;
+
+import com.mxgraph.model.mxCell;
+import com.mxgraph.view.mxGraph;
 
 import se.lth.cs.palcom.browsergui.dnd.GraphServiceTree.Node;
 import se.lth.cs.palcom.browsergui.dnd.GraphServiceTree.NodeType;
@@ -21,9 +25,18 @@ import se.lth.cs.palcom.discovery.proxy.PalcomServiceList;
 import se.lth.cs.palcom.discovery.proxy.PalcomServiceListPart;
 import se.lth.cs.palcom.discovery.proxy.Resource;
 
-import com.mxgraph.swing.handler.mxGraphTransferHandler;
 
-public class AssemblyGraphTransferHandler extends mxGraphTransferHandler{
+public class AssemblyGraphTransferHandler extends TransferHandler{
+	
+	private GraphEditor graphEditor;
+	private mxGraph graph;
+	
+	
+	public AssemblyGraphTransferHandler(GraphEditor graphEditor){
+		super();
+		this.graphEditor = graphEditor;
+		this.graph = graphEditor.getGraph();
+	}
 	
 	/**
 	 * 
@@ -32,10 +45,11 @@ public class AssemblyGraphTransferHandler extends mxGraphTransferHandler{
 
 	@Override
     public boolean importData(JComponent comp, Transferable t) {
+		int x = 100;
+		int y = (int)comp.getMousePosition().getY();
+
 		
-		System.out.println("  -ImportData in AssemblyGraphTransferHandler");
-		((GraphEditor)comp).test();
-		
+				
 		try {
 			Object data = t.getTransferData(new DataFlavor(Resource.class, "resource"));
 			if (!(data instanceof DeviceProxy)) {
@@ -44,9 +58,16 @@ public class AssemblyGraphTransferHandler extends mxGraphTransferHandler{
 			
 			DeviceProxy res = (DeviceProxy)data;
 			
+			mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>"+res.getName()+"</b>", x,y, 80, 30, "verticalAlign=top;textAlign=center");
+			cell.setConnectable(false);
+			
+			mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 80, 20);
+
+			graph.refresh();
+			
 			ArrayList<ServiceProxy> availableServices = new ArrayList<ServiceProxy>();
 			
-			GraphServiceTree gST = new GraphServiceTree();
+			GraphServiceTree gST = new GraphServiceTree(graph, cell);
 			
 		
 			PalcomServiceList services = res.getServiceList();
@@ -83,16 +104,16 @@ public class AssemblyGraphTransferHandler extends mxGraphTransferHandler{
 			}
 			
 			
-			
+			graphEditor.addGraphServiceTree(cell.getId(), gST);
 //			TODO
 //			
-			gST.printTree(comp, (int)comp.getMousePosition().getX(), (int)comp.getMousePosition().getY());
+//			gST.printTree(comp, (int)comp.getMousePosition().getX(), (int)comp.getMousePosition().getY());
 			
-			if(((GraphEditor)comp).addDevice(res)){
-				System.out.println("Added : "+res.getName());
-			} else {
-				System.out.println("Failed to add. Already in workspace!");
-			}
+//			if(((GraphEditor)comp).addDevice(res)){
+//				System.out.println("Added : "+res.getName());
+//			} else {
+//				System.out.println("Failed to add. Already in workspace!");
+//			}
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -117,9 +138,9 @@ public class AssemblyGraphTransferHandler extends mxGraphTransferHandler{
 
 	
 	
-	public boolean canImport(JComponent comp, DataFlavor[] flavors){
-    	return true;
-	}
+//	public boolean canImport(JComponent comp, DataFlavor[] flavors){
+//    	return true;
+//	}
 
     @Override
     public boolean canImport(TransferSupport support) {
