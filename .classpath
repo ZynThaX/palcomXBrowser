@@ -9,7 +9,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/PalcomUtils"/>
 	<classpathentry kind="lib" path="lib/dockingFramesCommon.jar"/>
 	<classpathentry kind="lib" path="lib/dockingFramesCore.jar"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/testGui"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/jgraphSrc"/>
+	<classpathentry kind="lib" path="lib/jgraphx.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
