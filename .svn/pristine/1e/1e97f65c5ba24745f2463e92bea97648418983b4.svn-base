@@ -1,0 +1,71 @@
+package se.lth.cs.palcom.browsergui.views;
+
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.io.IOException;
+
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JTree;
+import javax.swing.TransferHandler;
+import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreePath;
+
+import se.lth.cs.palcom.browsergui.AssemblyDroptarget;
+import se.lth.cs.palcom.discovery.DeviceProxy;
+import se.lth.cs.palcom.discovery.proxy.Resource;
+
+public class GraphEditor extends JLabel{
+	
+	/**
+	 * Creates a graph editor for the assemblies
+	 */
+	public GraphEditor(){
+		setText("This is the Graph Editor");
+		TransferHandler labelHandler = new TransferHandler() {
+
+	        @Override
+	        public boolean importData(JComponent comp, Transferable t) {
+	    		try {
+	    			Object data = t.getTransferData(new DataFlavor(Resource.class, "resource"));
+	    			if (!(data instanceof DeviceProxy)) { 
+	    				return false;
+	    			} 		
+	    			Resource res = (Resource)data;
+	    			
+	    			System.out.println(((DeviceProxy)res).getName());
+	    			return true;
+	    		} catch (Exception e) {
+	    			e.printStackTrace();
+	    			throw new RuntimeException(e);
+	    		}
+	        }
+
+	        @Override
+	        public boolean canImport(TransferSupport support) {
+	        	Object data;
+				try {
+					data = support.getTransferable().getTransferData(new DataFlavor(Resource.class, "resource"));
+					if (!(data instanceof DeviceProxy)) { 
+						return false;
+					} 
+		            return true;
+				} catch (UnsupportedFlavorException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				return false;
+				
+	        }
+
+	    };
+	    setTransferHandler(labelHandler);
+	    
+	}
+	
+	
+}

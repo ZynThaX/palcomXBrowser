@@ -1,5 +1,6 @@
 package se.lth.cs.palcom.browsergui.dnd;
 
+
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
@@ -48,7 +49,7 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 			data = support.getTransferable().getTransferData(new DataFlavor(Resource.class, "resource"));
 			if (!(data instanceof DeviceProxy)) { 
 				return false;
-			} 
+			}
             return true;
 		} catch (UnsupportedFlavorException e) {
 			e.printStackTrace();

@@ -93,9 +93,10 @@ public class GraphEditor extends JPanel {
 		add(graphComponent,BorderLayout.CENTER);
 		JLabel dropArea = new JLabel("<html>Drop<br>device<br>here</html>");
 		Border paddingBorder = BorderFactory.createEmptyBorder(10,10,10,10);
-		Border border = BorderFactory.createLineBorder(Color.BLUE);
+
+		Border border = BorderFactory.createLineBorder(Color.WHITE);
 		dropArea.setBorder(BorderFactory.createCompoundBorder(border,paddingBorder));
-		dropArea.setBackground(Color.WHITE);
+		dropArea.setBackground(new Color(202, 221, 237));
 		dropArea.setOpaque(true);
 		dropArea.setTransferHandler(new AssemblyGraphTransferHandler(this));
 
