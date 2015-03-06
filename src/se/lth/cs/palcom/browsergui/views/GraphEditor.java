@@ -115,11 +115,11 @@ public class GraphEditor extends JPanel{
 		
 		Border paddingBorder = BorderFactory.createEmptyBorder(10,10,10,10);
 		//JLabel will be involved for this border
-		Border border = BorderFactory.createLineBorder(Color.BLUE);
+		Border border = BorderFactory.createLineBorder(Color.WHITE);
 
 		dropArea.setBorder(BorderFactory.createCompoundBorder(border,paddingBorder));
 		
-		dropArea.setBackground(Color.WHITE);
+		dropArea.setBackground(new Color(202, 221, 237));
 		dropArea.setOpaque(true);
 //		dropArea.setForeground(Color.WHITE);
 //		droparea.set
