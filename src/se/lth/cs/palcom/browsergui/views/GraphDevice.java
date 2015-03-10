@@ -54,9 +54,30 @@ public class GraphDevice {
 		}
 		Node n = new Node(nt, name);
 		parent.children.add(n);
+//		System.out.println("Added node: "+ name);
 		return n;
 	}
 	
+	public class Command{
+		boolean in;
+		String name;
+		String type;
+		public Command(boolean in, String name, String type){
+			this.in = in;
+			this.name = name;
+			this.type = type;
+		}
+		
+		String getName(){
+			return name;
+		}
+		boolean isIn(){
+			return in;
+		}
+		String getType(){
+			return type;
+		}
+	}
 	public class Node {
 		ArrayList<Node> children;
 		NodeType nt;
@@ -65,25 +86,36 @@ public class GraphDevice {
 		String id;
 		mxCell nodeCell;
 		
-//		ArrayList<Command>
+		ArrayList<Command> commands;
+		
 		public Node(NodeType nt, String name){
 			children = new ArrayList<Node>();
 			this.nt = nt;
 			this.name = name;
 			added = false;
+			commands = new ArrayList<GraphDevice.Command>();
 		}
 		
 		public void add(NodeType nt, String name){
 			children.add(new Node(nt, name));
 		}
+		
+		public void addCommand(boolean in, String name, String type){
+//			System.out.println("  added command: " + name );
+			commands.add(new Command(in, name, type));
+		}
+		
+		public ArrayList<Command> getCommands(){
+			return commands;
+		}
 	}
 	
-	public boolean addService(mxCell addCell){
-		boolean ret = recAddService(root,addCell.getValue().toString());
+	public Node addService(String name){
+		Node node = recAddService(root,name);
 		if(!hasUnAddedServices(root)){
 			add.setVisible(false);
 		}
-		return ret;
+		return node;
 	}
 	
 	public boolean hasUnAddedServices(Node node){
@@ -97,18 +129,19 @@ public class GraphDevice {
 		return false;
 	}
 	
-	public boolean recAddService(Node node, String name){
+	public Node recAddService(Node node, String name){
 		if(node.nt == NodeType.SERVICELIST){
 			for(Node n:node.children){
-				if (recAddService(n, name)) return true;
+				Node retNode = recAddService(n, name);
+				if (retNode != null) return retNode;
 			}
 		}else{
 			if(name.equals(node.name)){
 				node.added = true;
-				return true;
+				return node;
 			}
 		}
-		return false;
+		return null;
 	}
 
 	
@@ -117,68 +150,10 @@ public class GraphDevice {
 	}
 
 
-	public double increseHeight() {
+	public double increseHeight(int addHeight) {
 		int oldHeight = height;
-		height+=40;
+		height+=addHeight+10;
 		return oldHeight;
 	}
-
-	
-	
-//	class AddServiceMenu extends JPopupMenu{
-//		public AddServiceMenu(ArrayList<Node> children){
-//			recAddMenu(this,children);
-//		}
-//		private void recAddMenu(JComponent jm, ArrayList<Node> children){
-//			for(final Node n:children){
-//				if(n.added != true){	
-//					if(n.nt == NodeType.SERVICE){
-//						final JMenuItem item = new JMenuItem(n.name);
-//		            	
-//		            	
-//						item.addActionListener(new ActionListener() {
-//							public void actionPerformed(ActionEvent e) {
-//								n.added = true;
-//								mxCell newFunc = (mxCell) graph.insertVertex(cell, null, n.name, 0, height, 80, 30, "");
-//								newFunc.setConnectable(false);
-//								
-//								
-//								mxCell portI1 = new mxCell("", geo1,"shape=ellipse;perimter=ellipsePerimeter;fillColor=blue");
-//								portI1.setVertex(true);		
-//								graph.addCell(portI1, newFunc);		
-//								
-//								
-//								mxCell portO1 = new mxCell("", geo2,"shape=ellipse;perimter=ellipsePerimeter;fillColor=green");
-//								portO1.setVertex(true);		
-//								graph.addCell(portO1, newFunc);		
-//								height += 40;
-//							}
-//						});
-//						
-//						
-//						
-//						
-//						jm.add(item);
-//	
-//					}else if(n.nt == NodeType.SERVICELIST){
-//						JMenu curr = new JMenu(n.name);
-//						jm.add(curr);
-//						recAddMenu(curr, n.children);
-//					}
-//				}
-//			}
-//		}
-//	}
-//	
-//	
-//	
-//
-//
-//
-//	public void printTree(Component component, int d, int e) {
-//		AddServiceMenu menu = new AddServiceMenu(root.children);
-//		
-//		menu.show(component, d, e);
-//	}
 
 }

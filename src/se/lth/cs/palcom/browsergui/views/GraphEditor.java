@@ -1,14 +1,22 @@
 package se.lth.cs.palcom.browsergui.views;
 
-import ist.palcom.resource.descriptor.Address;
+import ist.palcom.resource.descriptor.ASTNode;
+import ist.palcom.resource.descriptor.CommandInfo;
+import ist.palcom.resource.descriptor.ControlInfo;
+import ist.palcom.resource.descriptor.List;
+import ist.palcom.resource.descriptor.PRDServiceFMDescription;
+import ist.palcom.resource.descriptor.ParamInfo;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.TreeMap;
 
 import javax.swing.BorderFactory;
@@ -16,12 +24,17 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
-import se.lth.cs.palcom.browsergui.dnd.GraphServiceTree;
+import se.lth.cs.palcom.browsergui.views.GraphDevice.Command;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.NodeType;
 import se.lth.cs.palcom.browsergui.views.GraphDeviceView.AddServiceMenu;
 import se.lth.cs.palcom.discovery.DeviceProxy;
+import se.lth.cs.palcom.discovery.PalcomControlServiceDescription;
+import se.lth.cs.palcom.discovery.PalcomServiceDescription;
 import se.lth.cs.palcom.discovery.ResourceException;
 import se.lth.cs.palcom.discovery.ServiceListProxy;
 import se.lth.cs.palcom.discovery.ServiceProxy;
@@ -32,8 +45,12 @@ import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.handler.mxKeyboardHandler;
+import com.mxgraph.util.mxConstants;
+import com.mxgraph.util.mxDomUtils;
 import com.mxgraph.util.mxPoint;
+import com.mxgraph.view.mxEdgeStyle;
 import com.mxgraph.view.mxGraph;
+import com.mxgraph.view.mxMultiplicity;
 
 public class GraphEditor extends JPanel {
 
@@ -44,16 +61,69 @@ public class GraphEditor extends JPanel {
 	private TreeMap<String, GraphDevice> graphDevices;
 	private GraphDeviceView gDV;
 
-	final static int PORT_DIAMETER = 20;
-	final int PORT_RADIUS = PORT_DIAMETER / 2;
-	public static mxGeometry geo1 = new mxGeometry(0, 0.5, PORT_DIAMETER,	PORT_DIAMETER);
-	public static mxGeometry geo2 = new mxGeometry(1.0, 0.5, PORT_DIAMETER,PORT_DIAMETER);
+
+	public static int PORT_DIAMETER = 20;
+	public static int PORT_RADIUS = PORT_DIAMETER / 2;
+
+	public Document xmlDocument;
+	public TreeMap<String,String> usedColors;
+	public ArrayList<String> availableColors;
+	
+	public String getColor(String type){
+		String foundColor = usedColors.get(type.toLowerCase());
+		
+		if(foundColor==null){
+			Random rnd = new Random();
+			String color = availableColors.remove(rnd.nextInt(availableColors.size()));
+			usedColors.put(type.toLowerCase(), color);
+			
+			updateMultiplicities();
+			return color;
+		}else{
+			return foundColor;
+		}
+	}
+	
+	private String reduceTypeName(String type){
+		return type.replace("/", "");
+	}
+	
+	public void updateMultiplicities(){
+		Set<String> types = usedColors.keySet();
+		mxMultiplicity[] multiplicities = new mxMultiplicity[types.size()*2];
+		
+		int i = 0;
+		for(String type:types){
+			type = reduceTypeName(type);
+			multiplicities[i*2] = new mxMultiplicity(false, type + "Source", null, null, 0,
+					"0", null, "Source Must Have No Incoming Edge", null, true);  
+			
+			multiplicities[i*2+1] = new mxMultiplicity(false, type+ "Target", null, null, 0,
+					"100", Arrays.asList(new String[] {type + "Source"}), null, "Must be same type",true);
+			i++;
+		}
+		
+		graph.setMultiplicities(multiplicities);
+	}
 	
 	
 	public GraphEditor(){
 		graph = new AwesomemxGraph();
 		graphDevices = new TreeMap<String, GraphDevice>();
 		gDV = new GraphDeviceView(this);
+		usedColors = new TreeMap<String, String>();
+		availableColors = new ArrayList<String>();
+		availableColors.add("#F44336");
+		availableColors.add("#E91E63");
+		availableColors.add("#9C27B0");
+		availableColors.add("#673AB7");
+		availableColors.add("#2196F3");
+		availableColors.add("#009688");
+		availableColors.add("#8BC34A");
+		availableColors.add("#CDDC39");
+		mxConstants.DEFAULT_HOTSPOT = 1;
+		
+		xmlDocument = mxDomUtils.createDocument();
 		
 		final mxGraphComponent graphComponent = new mxGraphComponent(graph);
 		new mxKeyboardHandler(graphComponent);
@@ -75,19 +145,27 @@ public class GraphEditor extends JPanel {
 			}
 		});
 
-
-
+//		Map<String, Object> style = graph.getStylesheet().getDefaultEdgeStyle();
+//		style.put(mxConstants.STYLE_EDGE, mxEdgeStyle.OrthConnector);
 		
-		geo2.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
-		geo2.setRelative(true);
-		geo1.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
-		geo1.setRelative(true);
-		
+		Map<String, Object> EdgeStyle = graph.getStylesheet().getDefaultEdgeStyle();
+	    EdgeStyle.put(mxConstants.STYLE_EDGE, mxEdgeStyle.OrthConnector);
+	    EdgeStyle.put(mxConstants.STYLE_STROKEWIDTH, 1);
+	    EdgeStyle.put(mxConstants.STYLE_ROUNDED, true);
+//	    EdgeStyle.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ENTITY_RELATION); 
+//	    EdgeStyle.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_CONNECTOR);
+//	    EdgeStyle.put(mxConstants.STYLE_ENDARROW, mxConstants.ARROW_CLASSIC);
+//	    EdgeStyle.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_MIDDLE);
+//	    EdgeStyle.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_CENTER);
+	    
+	    
+	    
 		graph.setHtmlLabels(true);
 		graph.setAllowDanglingEdges(false);
 		graph.setCellsDeletable(true);
 		graph.setCellsResizable(false);;
 
+		
 		setLayout(new BorderLayout());
 
 		add(graphComponent,BorderLayout.CENTER);
@@ -108,33 +186,57 @@ public class GraphEditor extends JPanel {
 	}
 
 	public void addVertex(String id, String name) {
+		ArrayList<Command> inCommands = new ArrayList<Command>();
+		ArrayList<Command> outCommands = new ArrayList<Command>();
+		
 		GraphDevice gd = graphDevices.get(id);
-		
-		mxCell newService = (mxCell) graph.insertVertex(gd.cell, null, name, 0, gd.increseHeight(), 80, 30, "");
+				
+		for(Command c:gd.addService(name).getCommands()){
+			if(c.isIn()){
+				inCommands.add(c);
+			}else{
+				outCommands.add(c);
+			}
+		}
+
+		int height = Math.max(inCommands.size(), outCommands.size())*30;
+				
+		mxCell newService = (mxCell) graph.insertVertex(gd.cell, null, name, 0, gd.increseHeight(height), 150, height, "");
 		newService.setConnectable(false);
-
-		mxCell portI1 = new mxCell("", geo1,"shape=ellipse;perimter=ellipsePerimeter;fillColor=blue");
-		portI1.setVertex(true);		
-		graph.addCell(portI1, newService);		
-
-
-		mxCell portO1 = new mxCell("", geo2,"shape=ellipse;perimter=ellipsePerimeter;fillColor=green");
-		portO1.setVertex(true);		
-		graph.addCell(portO1, newService);		
 		
-		gd.addService(newService);
+		createPorts(inCommands,true,newService);
+		createPorts(outCommands,false,newService);
 		
 		graph.refresh();
 	}
 	
-	
-	/**
-	 * Adds a device to the Graph
-	 * 
-	 * @param d
-	 *            device to add
-	 * @return if successfully added return true else false
-	 */
+	private void createPorts(ArrayList<Command> commands, boolean isIn, mxCell parent){
+		String css = "shape=ellipse;perimter=ellipsePerimeter;align=right;spacingRight=20;portConstraint=east;";
+		double xRel = 1.0;
+		String typeExtenstion = "Source";
+		if(isIn){
+			xRel = 0.0;
+			css = "shape=ellipse;perimter=ellipsePerimeter;align=left;spacingLeft=20;portConstraint=west;";
+			typeExtenstion = "Target";
+		}		
+		
+		for(int i=0;i<commands.size();i++){
+			Command c = commands.get(i);
+			double top = (i*2+1)/(commands.size()*2.0);
+			mxGeometry outGeo = new mxGeometry(xRel, top, PORT_DIAMETER, PORT_DIAMETER);
+			outGeo.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
+			outGeo.setRelative(true);
+			String color = getColor(c.getType());
+
+			Element elem = xmlDocument.createElement(reduceTypeName(c.type) + typeExtenstion);
+			elem.setAttribute("name", c.name);
+			
+			
+			mxCell port = new mxCell(elem, outGeo,css + "fillColor="+color);
+			port.setVertex(true);		
+			graph.addCell(port, parent);	
+		}
+	}
 
 	public boolean addDevice(DeviceProxy d) {
 		if (devices.contains(d)) {
@@ -143,28 +245,13 @@ public class GraphEditor extends JPanel {
 		return devices.add(d);
 	}
 
-	/**
-	 * Creates an XML of the complete graph
-	 * 
-	 * @return xml as string
-	 */
 	public String getXML() {
 		return assemblyData;
 	}
 
-	/**
-	 * Creates the graph from the assemblyData
-	 * 
-	 * @param assemblyData
-	 *            data in xml that contains assembly information
-	 */
 	public void setGraph(String assemblyData) {
 		this.assemblyData = assemblyData;
 	}
-
-//	public mxGraph getGraph() {
-//		return graph;
-//	}
 
 	public void addGraphDevice(String key, GraphDevice gd) {
 		graphDevices.put(key, gd);
@@ -172,32 +259,65 @@ public class GraphEditor extends JPanel {
 
 	public void importDevice(int y, DeviceProxy data) throws ResourceException {
 		DeviceProxy res = (DeviceProxy) data;
-		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + res.getName() + "</b>", 100, y, 80, 30, "verticalAlign=top;textAlign=center");
+		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + res.getName() + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");
 		cell.setConnectable(false);
-		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 80, 20);
+		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
+		add.setConnectable(false);
 
 		graph.refresh();
 		GraphDevice gd = new GraphDevice(cell, add);
 
 		PalcomServiceList services = res.getServiceList();
+		
 		for (int i = 0; i < services.getNumService(); i++) {
 			recrusiveGetServices(null, gd, services.getService(i));
-			Address ser = services.getService(i).getAddress();
-			for (int k = 0; k < ser.getNumChild(); k++) {
-			}
 		}
 
 		addGraphDevice(cell.getId(), gd);
 	}
 
-	private void recrusiveGetServices(Node parent, GraphDevice gd,
-			PalcomServiceListPart psp) throws ResourceException {
+	private void recrusiveGetServices(Node parent, GraphDevice gd, PalcomServiceListPart psp) throws ResourceException {
 		if (psp instanceof ServiceProxy) {
-			gd.addNode(parent, NodeType.SERVICE, psp.getName());
+			Node node = gd.addNode(parent, NodeType.SERVICE, psp.getName());
+
+			ServiceProxy sp = (ServiceProxy) psp;
+			
+			PalcomServiceDescription psd = sp.getDescription();
+			
+			if(psd instanceof PalcomControlServiceDescription){
+				PalcomControlServiceDescription pcsd = (PalcomControlServiceDescription) psd;
+				PRDServiceFMDescription psfmd = pcsd.getPRDServiceFMDescription();
+				if(psfmd != null){
+					for(int i =0;i<psfmd.getNumControlInfo();i++){
+						ControlInfo ctrlInfo = psfmd.getControlInfo(i);
+						if(ctrlInfo instanceof CommandInfo){
+							CommandInfo comI = (CommandInfo) ctrlInfo;
+							String name = comI.getID();
+							String type = "ping";
+							boolean isIn = comI.getDirection().toLowerCase().equals("in");
+							
+							typeloop:
+							for(int j = 0; j < comI.getNumChild();j++){
+								ASTNode astn = comI.getChild(j);
+								if(astn instanceof List){
+									List list = (List)comI.getChild(j);
+									for(int k = 0;k<list.getNumChild();k++){
+										ParamInfo pi = (ParamInfo) list.getChild(k);
+										type = pi.getType();
+										break typeloop;
+										//TODO, finns det fall då det existerar flera types till en funktion?
+									}
+								}
+							}
+							node.addCommand(isIn, name, type);
+						}
+					}
+				}
+			}
+				
 		} else if (psp instanceof ServiceListProxy) {
 			ServiceListProxy slp = (ServiceListProxy) psp;
-			Node newParent = gd.addNode(parent, NodeType.SERVICELIST,
-					slp.getName() + " LIST");
+			Node newParent = gd.addNode(parent, NodeType.SERVICELIST, slp.getName() + " LIST");
 			for (int i = 0; i < slp.getNumService(); i++) {
 				recrusiveGetServices(newParent, gd, slp.getService(i));
 			}

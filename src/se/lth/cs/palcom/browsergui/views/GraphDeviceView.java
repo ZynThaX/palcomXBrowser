@@ -36,7 +36,7 @@ public class GraphDeviceView {
 			for(final Node n:children){
 				if(n.added != true){	
 					if(n.nt == NodeType.SERVICE){
-						final JMenuItem item = new JMenuItem(n.name);
+						final JMenuItem item = new JMenuItem(n.name + " ()");
 						item.addActionListener(new ActionListener() {
 							public void actionPerformed(ActionEvent e) {
 								ge.addVertex(id,n.name);
