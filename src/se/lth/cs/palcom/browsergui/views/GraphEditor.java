@@ -9,6 +9,12 @@ import ist.palcom.resource.descriptor.ParamInfo;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -20,6 +26,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
@@ -60,6 +67,9 @@ public class GraphEditor extends JPanel {
 	private mxGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
 	private GraphDeviceView gDV;
+	private JPanel southPanel;
+	private JPanel centerPanel;
+	private GraphEditor thisGraphEditor;
 
 
 	public static int PORT_DIAMETER = 20;
@@ -108,6 +118,7 @@ public class GraphEditor extends JPanel {
 	
 	
 	public GraphEditor(){
+		thisGraphEditor = this;
 		graph = new AwesomemxGraph();
 		graphDevices = new TreeMap<String, GraphDevice>();
 		gDV = new GraphDeviceView(this);
@@ -122,7 +133,12 @@ public class GraphEditor extends JPanel {
 		availableColors.add("#8BC34A");
 		availableColors.add("#CDDC39");
 		mxConstants.DEFAULT_HOTSPOT = 1;
+		centerPanel = new JPanel();
+		centerPanel.setAutoscrolls(true);
+		centerPanel.setLayout(new BorderLayout());
 		
+		southPanel = new JPanel();
+		southPanel.setLayout(new BorderLayout());
 		xmlDocument = mxDomUtils.createDocument();
 		
 		final mxGraphComponent graphComponent = new mxGraphComponent(graph);
@@ -168,21 +184,46 @@ public class GraphEditor extends JPanel {
 		
 		setLayout(new BorderLayout());
 
-		add(graphComponent,BorderLayout.CENTER);
 		JLabel dropArea = new JLabel("<html>Drop<br>device<br>here</html>");
 		Border paddingBorder = BorderFactory.createEmptyBorder(10,10,10,10);
-
-		Border border = BorderFactory.createLineBorder(Color.WHITE);
+		Color lightBlue = new Color(202, 221, 237);
+		Border border = BorderFactory.createLineBorder(Color.GRAY);
 		dropArea.setBorder(BorderFactory.createCompoundBorder(border,paddingBorder));
-		dropArea.setBackground(new Color(202, 221, 237));
+		dropArea.setBackground(new Color(217, 217, 217)); //new Color(202, 221, 237)
+		dropArea.setForeground(Color.WHITE);
 		dropArea.setOpaque(true);
 		dropArea.setTransferHandler(new AssemblyGraphTransferHandler(this));
 
-
-		add(dropArea,BorderLayout.WEST);
+		
+		
+		southPanel.setAutoscrolls(true);
+		southPanel.setBorder(BorderFactory.createLineBorder(lightBlue, 3));
+		//southPanel.setPreferredSize(new Dimension(100, 150));
+		final GraphSynthServicePanel servicePanel = new GraphSynthServicePanel();
+		final String buttonLabel = "Synthesised Services";
+		final JButton synthServiceBtn = new JButton("︾" + " " + buttonLabel);
+		synthServiceBtn.setBackground(lightBlue);
+		synthServiceBtn.setBorder(null);
+		synthServiceBtn.addActionListener(new ActionListener() {
+			
+			public void actionPerformed(ActionEvent e) {
+				if(servicePanel.isVisible()){
+					synthServiceBtn.setText("︽" + " " + buttonLabel);
+				} else {
+					synthServiceBtn.setText("︾" + " " + buttonLabel);
+				}
+				servicePanel.toggle();
+			}
+		});
+		southPanel.add(synthServiceBtn, BorderLayout.NORTH);
+		southPanel.add(servicePanel, BorderLayout.CENTER);
 		graphComponent.setToolTips(true);
-		this.add(graphComponent);
+		//this.add(graphComponent);
+		centerPanel.add(graphComponent);
 		devices = new HashSet<DeviceProxy>();
+		add(centerPanel, BorderLayout.CENTER);
+		add(dropArea,BorderLayout.WEST);
+		add(southPanel, BorderLayout.SOUTH);
 	}
 
 	public void addVertex(String id, String name) {
@@ -305,7 +346,7 @@ public class GraphEditor extends JPanel {
 										ParamInfo pi = (ParamInfo) list.getChild(k);
 										type = pi.getType();
 										break typeloop;
-										//TODO, finns det fall d� det existerar flera types till en funktion?
+										//TODO, finns det fall då det existerar flera types till en funktion?
 									}
 								}
 							}

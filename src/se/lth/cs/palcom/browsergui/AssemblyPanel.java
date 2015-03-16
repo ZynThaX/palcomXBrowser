@@ -172,7 +172,7 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 		
 		assemblyGraph = new GraphEditor();
 		prevTab = TAB_NAME_GRAPH;
-		tabs.add(TAB_NAME_GRAPH, new JScrollPane(assemblyGraph));
+		tabs.add(TAB_NAME_GRAPH, assemblyGraph);
 		
 		tabs.add(TAB_NAME_EDITOR, new JScrollPane(assemblyTree));
 		tabs.addChangeListener(this);
