@@ -6,6 +6,8 @@ import ist.palcom.resource.descriptor.ControlInfo;
 import ist.palcom.resource.descriptor.List;
 import ist.palcom.resource.descriptor.PRDServiceFMDescription;
 import ist.palcom.resource.descriptor.ParamInfo;
+import ist.palcom.resource.descriptor.SynthesizedService;
+import ist.palcom.resource.descriptor.SynthesizedServiceList;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -34,6 +36,7 @@ import javax.swing.border.Border;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import se.lth.cs.palcom.browsergui.AssemblyPanel.SynthServiceListNode;
 import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Command;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
@@ -63,13 +66,13 @@ public class GraphEditor extends JPanel {
 
 	private static final long serialVersionUID = 8906103669540394160L;
 	private HashSet<DeviceProxy> devices;
+	private HashSet<SynthesizedService> ssList;
 	private String assemblyData;
 	private mxGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
 	private GraphDeviceView gDV;
 	private JPanel southPanel;
 	private JPanel centerPanel;
-	private GraphEditor thisGraphEditor;
 
 
 	public static int PORT_DIAMETER = 20;
@@ -118,7 +121,7 @@ public class GraphEditor extends JPanel {
 	
 	
 	public GraphEditor(){
-		thisGraphEditor = this;
+		ssList = new HashSet<SynthesizedService>();
 		graph = new AwesomemxGraph();
 		graphDevices = new TreeMap<String, GraphDevice>();
 		gDV = new GraphDeviceView(this);
@@ -194,12 +197,11 @@ public class GraphEditor extends JPanel {
 		dropArea.setOpaque(true);
 		dropArea.setTransferHandler(new AssemblyGraphTransferHandler(this));
 
-		
-		
+
 		southPanel.setAutoscrolls(true);
 		southPanel.setBorder(BorderFactory.createLineBorder(lightBlue, 3));
 		//southPanel.setPreferredSize(new Dimension(100, 150));
-		final GraphSynthServicePanel servicePanel = new GraphSynthServicePanel();
+		final GraphSynthServicePanel servicePanel = new GraphSynthServicePanel(this);
 		final String buttonLabel = "Synthesised Services";
 		final JButton synthServiceBtn = new JButton("︾" + " " + buttonLabel);
 		synthServiceBtn.setBackground(lightBlue);
@@ -297,7 +299,14 @@ public class GraphEditor extends JPanel {
 	public void addGraphDevice(String key, GraphDevice gd) {
 		graphDevices.put(key, gd);
 	}
-
+	
+	public void addSynthService(SynthesizedService n){
+		ssList.add(n);
+	}
+	
+	public HashSet<SynthesizedService> getSynthServices(){
+		return ssList;
+	}
 	public void importDevice(int y, DeviceProxy data) throws ResourceException {
 		DeviceProxy res = (DeviceProxy) data;
 		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + res.getName() + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");

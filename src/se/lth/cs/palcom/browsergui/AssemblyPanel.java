@@ -434,7 +434,7 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 		}
 	}
 	
-	class SynthServiceListNode extends AssemblyTreeNode<SynthesizedServiceList> {
+	public class SynthServiceListNode extends AssemblyTreeNode<SynthesizedServiceList> {
 		public SynthServiceListNode(SynthesizedServiceList synthesizedServiceList) {
 			super("SS");
 			this.data = synthesizedServiceList;

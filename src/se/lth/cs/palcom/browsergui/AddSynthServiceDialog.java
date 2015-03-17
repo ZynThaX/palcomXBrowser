@@ -9,6 +9,7 @@ import ist.palcom.resource.descriptor.PRDServiceFMDescription;
 import ist.palcom.resource.descriptor.SynthesizedService;
 import ist.palcom.resource.descriptor.Topic;
 
+import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -16,7 +17,9 @@ import javax.swing.ButtonGroup;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JRadioButton;
@@ -27,9 +30,13 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import se.lth.cs.palcom.browsergui.AssemblyPanel.SynthServiceListNode;
+import se.lth.cs.palcom.browsergui.views.GraphSynthServicePanel;
 
 public class AddSynthServiceDialog extends JDialog implements ActionListener, ChangeListener {
+	private static final long serialVersionUID = 151171697356756851L;
 	private SynthServiceListNode target; //This is ugly as hell...
+	public static String WINDOW_GRAPH = "graph";
+	public static String WINDOW_TREE = "tree";
 	
 	private JTextField txtGroupTopic;
 	private JLabel lblGroupTopic;
@@ -39,12 +46,26 @@ public class AddSynthServiceDialog extends JDialog implements ActionListener, Ch
 	private JTextField txtName;
 
 	private JCheckBox authBox;
+	private String window2 = "";
+	private GraphSynthServicePanel ssPanel;
 
 	public AddSynthServiceDialog(SynthServiceListNode node) {
 		target = node;
 		initComponents();
 		setSize(400, 300);
 		setVisible(true);
+		window2 = WINDOW_TREE;
+	}
+	
+	public AddSynthServiceDialog(Frame parent, GraphSynthServicePanel ssPanel) {
+//		target = node;
+		super(parent, true);
+		initComponents();
+		setSize(400, 300);
+		setVisible(true);
+		window2 = WINDOW_GRAPH;
+		this.ssPanel = ssPanel;
+		System.out.println("windos is now : " + window2);
 	}
 	
 	private void initComponents() {
@@ -166,6 +187,7 @@ public class AddSynthServiceDialog extends JDialog implements ActionListener, Ch
 			dist = PRDService.RADIOCAST; //Really? I dont't think so...
 		} else if (ae.getActionCommand().equals("Cancel")) {
 			setVisible(false);
+			dispose();
 		} else if (ae.getActionCommand().equals("Ok")) {
 			StringBuilder sb = new StringBuilder();
 			boolean error = false;
@@ -210,10 +232,21 @@ public class AddSynthServiceDialog extends JDialog implements ActionListener, Ch
 				JOptionPane.showMessageDialog(null, sb.toString());
 				return;
 			}
+			if(ssPanel == null){
+				System.out.println("opened in tree");
+			}
+			if(target == null){
+				System.out.println("opened in graph");
+			}
 			sserv.setDistribution(dist);
-			
-			target.addService(sserv);
+			System.out.println("window is: "+ window2);
+			if(window2.equals(WINDOW_GRAPH)){
+				ssPanel.addService(sserv);
+			} else if(window2.equals(WINDOW_TREE)){
+				target.addService(sserv);
+			}
 			setVisible(false);
+			dispose();
 		}
 	}
 
