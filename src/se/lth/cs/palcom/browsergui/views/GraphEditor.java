@@ -66,7 +66,7 @@ public class GraphEditor extends JPanel {
 
 	private static final long serialVersionUID = 8906103669540394160L;
 	private HashSet<DeviceProxy> devices;
-	private HashSet<SynthesizedService> ssList;
+	private ArrayList<SynthesizedService> ssList;
 	private String assemblyData;
 	private mxGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
@@ -121,7 +121,7 @@ public class GraphEditor extends JPanel {
 	
 	
 	public GraphEditor(){
-		ssList = new HashSet<SynthesizedService>();
+		ssList = new ArrayList<SynthesizedService>();
 		graph = new AwesomemxGraph();
 		graphDevices = new TreeMap<String, GraphDevice>();
 		gDV = new GraphDeviceView(this);
@@ -304,7 +304,7 @@ public class GraphEditor extends JPanel {
 		ssList.add(n);
 	}
 	
-	public HashSet<SynthesizedService> getSynthServices(){
+	public ArrayList<SynthesizedService> getSynthServices(){
 		return ssList;
 	}
 	public void importDevice(int y, DeviceProxy data) throws ResourceException {

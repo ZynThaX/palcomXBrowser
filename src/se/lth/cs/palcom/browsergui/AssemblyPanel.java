@@ -84,6 +84,7 @@ import javax.swing.GroupLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
@@ -1993,7 +1994,6 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 			
 		} else if (ae.getActionCommand().equals("AddSynth")) {
 			final SynthServiceListNode node = (SynthServiceListNode) assemblyTree.getSelectionPath().getLastPathComponent();
-
 			AddSynthServiceDialog assd = new AddSynthServiceDialog(node);
 		} else if (ae.getActionCommand().equals("AddCommand")) {
 			final TreeNode node = (TreeNode) assemblyTree.getSelectionPath().getLastPathComponent();

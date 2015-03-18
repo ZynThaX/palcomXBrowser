@@ -9,6 +9,7 @@ import ist.palcom.resource.descriptor.PRDServiceFMDescription;
 import ist.palcom.resource.descriptor.SynthesizedService;
 import ist.palcom.resource.descriptor.Topic;
 
+import java.awt.Component;
 import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -26,6 +27,7 @@ import javax.swing.JRadioButton;
 import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.LayoutStyle;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -46,7 +48,7 @@ public class AddSynthServiceDialog extends JDialog implements ActionListener, Ch
 	private JTextField txtName;
 
 	private JCheckBox authBox;
-	private String window2 = "";
+	private String window = "";
 	private GraphSynthServicePanel ssPanel;
 
 	public AddSynthServiceDialog(SynthServiceListNode node) {
@@ -54,18 +56,17 @@ public class AddSynthServiceDialog extends JDialog implements ActionListener, Ch
 		initComponents();
 		setSize(400, 300);
 		setVisible(true);
-		window2 = WINDOW_TREE;
+		window = WINDOW_TREE;
 	}
 	
 	public AddSynthServiceDialog(Frame parent, GraphSynthServicePanel ssPanel) {
 //		target = node;
-		super(parent, true);
+		super(parent, false);
 		initComponents();
 		setSize(400, 300);
 		setVisible(true);
-		window2 = WINDOW_GRAPH;
+		window = WINDOW_GRAPH;
 		this.ssPanel = ssPanel;
-		System.out.println("windos is now : " + window2);
 	}
 	
 	private void initComponents() {
@@ -232,17 +233,12 @@ public class AddSynthServiceDialog extends JDialog implements ActionListener, Ch
 				JOptionPane.showMessageDialog(null, sb.toString());
 				return;
 			}
-			if(ssPanel == null){
-				System.out.println("opened in tree");
-			}
-			if(target == null){
-				System.out.println("opened in graph");
-			}
+
 			sserv.setDistribution(dist);
-			System.out.println("window is: "+ window2);
-			if(window2.equals(WINDOW_GRAPH)){
+			
+			if(window.equals(WINDOW_GRAPH)){
 				ssPanel.addService(sserv);
-			} else if(window2.equals(WINDOW_TREE)){
+			} else if(window.equals(WINDOW_TREE)){
 				target.addService(sserv);
 			}
 			setVisible(false);
