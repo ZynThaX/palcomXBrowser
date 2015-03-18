@@ -28,6 +28,8 @@ public class GraphDeviceView {
 	}
 	
 	public class AddServiceMenu extends JPopupMenu{
+		private static final long serialVersionUID = -1195841985487222826L;
+
 		public AddServiceMenu(ArrayList<Node> children, String id){
 			recAddMenu(this,children,id);
 		}
@@ -36,7 +38,7 @@ public class GraphDeviceView {
 			for(final Node n:children){
 				if(n.added != true){	
 					if(n.nt == NodeType.SERVICE){
-						final JMenuItem item = new JMenuItem(n.name + " ()");
+						final JMenuItem item = new JMenuItem(n.name + " ("+n.commands.size()+")");
 						item.addActionListener(new ActionListener() {
 							public void actionPerformed(ActionEvent e) {
 								ge.addVertex(id,n.name);

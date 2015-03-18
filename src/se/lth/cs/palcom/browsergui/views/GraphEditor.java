@@ -7,18 +7,18 @@ import ist.palcom.resource.descriptor.List;
 import ist.palcom.resource.descriptor.PRDServiceFMDescription;
 import ist.palcom.resource.descriptor.ParamInfo;
 import ist.palcom.resource.descriptor.SynthesizedService;
-import ist.palcom.resource.descriptor.SynthesizedServiceList;
+import ist.palcom.xml.XMLFactory;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Graphics;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -36,7 +36,6 @@ import javax.swing.border.Border;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import se.lth.cs.palcom.browsergui.AssemblyPanel.SynthServiceListNode;
 import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Command;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
@@ -58,9 +57,14 @@ import com.mxgraph.swing.handler.mxKeyboardHandler;
 import com.mxgraph.util.mxConstants;
 import com.mxgraph.util.mxDomUtils;
 import com.mxgraph.util.mxPoint;
+import com.mxgraph.util.svg.Parser;
 import com.mxgraph.view.mxEdgeStyle;
 import com.mxgraph.view.mxGraph;
 import com.mxgraph.view.mxMultiplicity;
+
+import internal.org.kxml2.io.KXmlParser;
+import internal.org.xmlpull.v1.XmlPullParser;
+import internal.org.xmlpull.v1.XmlPullParserException;
 
 public class GraphEditor extends JPanel {
 
@@ -242,7 +246,7 @@ public class GraphEditor extends JPanel {
 			}
 		}
 
-		int height = Math.max(inCommands.size(), outCommands.size())*30;
+		int height = Math.max(Math.max(inCommands.size(), outCommands.size())*30,20);
 				
 		mxCell newService = (mxCell) graph.insertVertex(gd.cell, null, name, 0, gd.increseHeight(height), 150, height, "");
 		newService.setConnectable(false);
@@ -294,6 +298,133 @@ public class GraphEditor extends JPanel {
 
 	public void setGraph(String assemblyData) {
 		this.assemblyData = assemblyData;
+		updateGraphWithData();
+	}
+
+	private void updateGraphWithData() {
+		//se OldschoolAssemblyLoader
+		
+		XmlPullParser factory = new KXmlParser();
+		
+		int topPos = 10;
+		
+		TreeMap<String, GraphDevice> devices = new TreeMap<String, GraphDevice>();
+		TreeMap<String, Node> serviceNodes = new TreeMap<String, Node>();
+		
+		try {
+			byte[] xmlBytes = assemblyData.getBytes("UTF8");
+			
+			factory.setInput(new InputStreamReader(new ByteArrayInputStream(xmlBytes, 0, xmlBytes.length)));
+			factory.nextTag();
+			
+			xmlGoTo(factory,"DeviceDeclList");
+			factory.nextTag();
+			
+			while(!factory.getName().equals("DeviceDeclList")){
+				String id= factory.getAttributeValue("", "id");
+				if(factory.getName().equals("Identifier") && id != null){
+					mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + id + "</b>", 150, topPos, 100, 30, "verticalAlign=top;textAlign=center");
+					cell.setConnectable(false);
+					mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
+					add.setConnectable(false);
+
+					graph.refresh();
+					GraphDevice gd = new GraphDevice(cell, add);
+										
+					devices.put(id, gd);
+
+					addGraphDevice(cell.getId(), gd);
+					
+					topPos+=100;
+				}
+				
+				factory.nextTag();
+			}
+			
+			xmlGoTo(factory,"ServiceDeclList");
+			factory.nextTag();
+			
+			String serviceId;
+			String[] names = new String[2];//Fullösning, fixa bättre!
+			
+			while(!factory.getName().equals("ServiceDeclList")){
+				if(factory.getName().equals("ServiceDecl")){
+					xmlGoTo(factory,"Identifier");
+					serviceId = factory.getAttributeValue("", "id");
+					
+					xmlGoTo(factory,"SingleServiceDecl");
+					xmlGoTo(factory,"Identifier");
+					names[0] = factory.getAttributeValue("", "id");
+					
+					xmlGoTo(factory,"DeviceUse");
+					xmlGoTo(factory,"Identifier");
+					names[1] = factory.getAttributeValue("", "id");//device name
+					
+					GraphDevice gd = devices.get(names[1]);
+					Node serviceNode = gd.addNode(null, NodeType.SERVICE, names[0]);
+					
+					serviceNodes.put(serviceId, serviceNode);
+					
+					xmlGoTo(factory,"ServiceDecl");
+				}
+				factory.nextTag();
+			}
+			
+			xmlGoTo(factory,"EventHandlerScript");
+			xmlGoTo(factory,"EventHandlerList");
+			factory.nextTag();
+			
+			String commandName;
+			String direction;
+			String type = "ping";
+			
+			while(!factory.getName().equals("EventHandlerList")){
+				if(factory.getName().equals("EventHandlerClause")){
+					xmlGoTo(factory,"CommandEvent");
+					commandName = factory.getAttributeValue("", "commandName");
+					
+					xmlGoTo(factory,"ServiceUse");
+					xmlGoTo(factory,"Identifier");
+					serviceId = factory.getAttributeValue("", "id");
+					
+					xmlGoTo(factory,"CmdI");
+					direction = factory.getAttributeValue("", "direction");
+					factory.nextTag();
+					if(factory.getName().equals("PI")){
+						type = factory.getAttributeValue("", "type");
+					}
+					
+					Node serviceNode = serviceNodes.get(serviceId);
+					
+					serviceNode.addCommand(direction.toLowerCase().equals("in"), commandName, type);
+										
+					xmlGoTo(factory,"EventHandlerClause");
+				}
+				factory.nextTag();
+			}
+
+			for(String s:graphDevices.keySet()){
+				GraphDevice gd = graphDevices.get(s);
+				Node n = gd.getUnaddedService(null);
+				addVertex(gd.getId(), n.name);
+			}
+			
+		} catch (UnsupportedEncodingException e) {
+			//TODO
+			e.printStackTrace();
+		} catch (XmlPullParserException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	private void xmlGoTo(XmlPullParser factory, String tagName) throws XmlPullParserException, IOException{
+		while(!factory.getName().equals(tagName)){
+			factory.nextTag();
+		}
 	}
 
 	public void addGraphDevice(String key, GraphDevice gd) {
@@ -367,7 +498,7 @@ public class GraphEditor extends JPanel {
 				
 		} else if (psp instanceof ServiceListProxy) {
 			ServiceListProxy slp = (ServiceListProxy) psp;
-			Node newParent = gd.addNode(parent, NodeType.SERVICELIST, slp.getName() + " LIST");
+			Node newParent = gd.addNode(parent, NodeType.SERVICELIST, slp.getName());
 			for (int i = 0; i < slp.getNumService(); i++) {
 				recrusiveGetServices(newParent, gd, slp.getService(i));
 			}

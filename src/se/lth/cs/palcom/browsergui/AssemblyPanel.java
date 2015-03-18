@@ -1656,7 +1656,9 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		assemblyGraph.setGraph(assemblyData);
+		if(tabName.equals(TAB_NAME_GRAPH)){
+			assemblyGraph.setGraph(assemblyData);			
+		}
 		prevTab = tabName;
 	}
 	

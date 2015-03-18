@@ -129,6 +129,24 @@ public class GraphDevice {
 		return false;
 	}
 	
+	public Node getUnaddedService(Node node){
+		if(node == null)
+			node = root;
+		
+		if(node.nt == NodeType.SERVICELIST){
+			for(Node n:node.children){
+				Node n2 = getUnaddedService(n);
+				if(n2 != null)
+					return n2;
+			}
+		}else{
+			if(!node.added){
+				return node;
+			}
+		}
+		return null;
+	}
+	
 	public Node recAddService(Node node, String name){
 		if(node.nt == NodeType.SERVICELIST){
 			for(Node n:node.children){
