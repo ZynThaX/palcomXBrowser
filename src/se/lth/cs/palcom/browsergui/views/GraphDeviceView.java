@@ -23,9 +23,38 @@ public class GraphDeviceView {
 		this.ge = ge;
 	}
 	
+
 	public AddServiceMenu createServiceMenu(ArrayList<Node> children, String id){
 		return new AddServiceMenu(children, id);
 	}
+	
+	public RemoveServiceMenu createRemoveMenu(mxCell removeCell){
+		return new RemoveServiceMenu(removeCell);
+	}
+	
+	class RemoveServiceMenu extends JPopupMenu {
+		JMenuItem removeItem;
+		mxCell removeCell;
+
+		public RemoveServiceMenu(mxCell rmC){
+			removeCell = rmC;
+			removeItem = new JMenuItem("Remove");
+
+			removeItem.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					String parentId = removeCell.getParent().getId();
+					
+					ge.removeVertex(parentId, removeCell.getId());
+//					GraphDevice cg = objectList.get(parentId);
+//					if(cg != null){
+//						cg.removeFunction(removeCell);
+//					}
+				}
+			});
+			add(removeItem);
+		};
+	}
+	
 	
 	public class AddServiceMenu extends JPopupMenu{
 		private static final long serialVersionUID = -1195841985487222826L;
@@ -38,7 +67,7 @@ public class GraphDeviceView {
 			for(final Node n:children){
 				if(n.added != true){	
 					if(n.nt == NodeType.SERVICE){
-						final JMenuItem item = new JMenuItem(n.name + " ("+n.commands.size()+")");
+						final JMenuItem item = new JMenuItem(n.name + " ("+n.inCommands.size()+"," + n.outCommands.size()+")");
 						item.addActionListener(new ActionListener() {
 							public void actionPerformed(ActionEvent e) {
 								ge.addVertex(id,n.name);

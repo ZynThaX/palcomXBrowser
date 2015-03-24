@@ -43,6 +43,7 @@ import se.lth.cs.palcom.browsergui.views.GraphDevice.Command;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.NodeType;
 import se.lth.cs.palcom.browsergui.views.GraphDeviceView.AddServiceMenu;
+import se.lth.cs.palcom.browsergui.views.GraphDeviceView.RemoveServiceMenu;
 import se.lth.cs.palcom.discovery.DeviceProxy;
 import se.lth.cs.palcom.discovery.DiscoveryManager;
 import se.lth.cs.palcom.discovery.PalcomControlServiceDescription;
@@ -163,7 +164,12 @@ public class GraphEditor extends JPanel {
 					}
 
 				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")){
-					//TODO, rightclick
+
+					RemoveServiceMenu menu = gDV.createRemoveMenu(cell);
+			        
+	                
+			        menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
+			        
 				}
 			}
 		});
@@ -233,27 +239,25 @@ public class GraphEditor extends JPanel {
 	}
 
 	public void addVertex(String id, String name) {
-		ArrayList<Command> inCommands = new ArrayList<Command>();
-		ArrayList<Command> outCommands = new ArrayList<Command>();
-		
 		GraphDevice gd = graphDevices.get(id);
-				
-		for(Command c:gd.addService(name).getCommands()){
-			if(c.isIn()){
-				inCommands.add(c);
-			}else{
-				outCommands.add(c);
-			}
-		}
+		Node n = gd.addService(name);
+		
+		mxCell nodeCell = (mxCell) graph.insertVertex(gd.cell, null, name, 0, 0, 150, n.getHeight());
+		nodeCell.setConnectable(false);
+		
+		n.nodeCell = nodeCell;
+		
+		createPorts(n.getInCommands(),true,nodeCell);
+		createPorts(n.getOutCommands(),false,nodeCell);
 
-		int height = Math.max(Math.max(inCommands.size(), outCommands.size())*30,20);
-				
-		mxCell newService = (mxCell) graph.insertVertex(gd.cell, null, name, 0, gd.increseHeight(height), 150, height, "");
-		newService.setConnectable(false);
-		
-		createPorts(inCommands,true,newService);
-		createPorts(outCommands,false,newService);
-		
+		gd.rerender();
+		graph.refresh();
+	}
+	
+	public void removeVertex(String parentId, String cellId){
+		GraphDevice gd = graphDevices.get(parentId);
+		gd.removeService(cellId);
+		gd.rerender();
 		graph.refresh();
 	}
 	
@@ -475,9 +479,9 @@ public class GraphEditor extends JPanel {
 		DeviceProxy res = (DeviceProxy) data;
 		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + res.getName() + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");
 		cell.setConnectable(false);
-		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
+		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 30, 150, 20);
 		add.setConnectable(false);
-
+		
 		graph.refresh();
 		GraphDevice gd = new GraphDevice(cell, add);
 
