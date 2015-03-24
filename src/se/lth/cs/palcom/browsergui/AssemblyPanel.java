@@ -171,7 +171,7 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 		
 		tabs = new JTabbedPane(JTabbedPane.BOTTOM);
 		
-		assemblyGraph = new GraphEditor();
+		assemblyGraph = new GraphEditor(app.getDiscoveryManager());
 		prevTab = TAB_NAME_GRAPH;
 		tabs.add(TAB_NAME_GRAPH, assemblyGraph);
 		

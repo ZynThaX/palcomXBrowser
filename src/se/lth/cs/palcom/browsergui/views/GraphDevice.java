@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
 
-public class GraphDevice {
+public class GraphDevice implements Comparable {
 	final static int PORT_DIAMETER = 20;
 	final int PORT_RADIUS = PORT_DIAMETER / 2;
 	public static mxGeometry geo1 = new mxGeometry(0, 0.5, PORT_DIAMETER,	PORT_DIAMETER);
@@ -172,6 +172,16 @@ public class GraphDevice {
 		int oldHeight = height;
 		height+=addHeight+10;
 		return oldHeight;
+	}
+
+
+	public int compareTo(Object o) {	
+		if(o instanceof GraphDevice){
+			GraphDevice gd = (GraphDevice) o;
+			return cell.getId().compareTo(gd.cell.getId());
+		}else{
+			return -1;
+		}
 	}
 
 }
