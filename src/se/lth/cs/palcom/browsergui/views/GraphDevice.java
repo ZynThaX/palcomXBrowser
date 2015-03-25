@@ -11,7 +11,7 @@ public class GraphDevice implements Comparable {
 	public static mxGeometry geo1 = new mxGeometry(0, 0.5, PORT_DIAMETER,	PORT_DIAMETER);
 	public static mxGeometry geo2 = new mxGeometry(1.0, 0.5, PORT_DIAMETER,PORT_DIAMETER);
 
-	public final static int DEFAULT_HEIGHT = 60;
+	public final static int DEFAULT_HEIGHT = 40;
 	Node root;
 	int height;
 	mxCell cell;
@@ -28,10 +28,14 @@ public class GraphDevice implements Comparable {
 	}
 	
 	public void rerender(){
-		height = DEFAULT_HEIGHT;
+		if(!hasUnAddedServices(root)){
+			height = DEFAULT_HEIGHT-20;
+		}else{
+			height = DEFAULT_HEIGHT;			
+		}
 		recRerender(root);
 		
-		cell.getGeometry().setHeight(height-10);
+		cell.getGeometry().setHeight(height);
 	}
 	
 	private void recRerender(Node node){
@@ -42,7 +46,7 @@ public class GraphDevice implements Comparable {
 		}else{
 			if(node.nodeCell != null && node.added){
 				node.nodeCell.getGeometry().setY(height);
-				height += node.getHeight()+10;
+				height += node.getHeight();
 			}
 		}
 	}
@@ -52,25 +56,25 @@ public class GraphDevice implements Comparable {
 		return cell.getId();
 	}
 
-	public void removeService(String cellId){
-		recRemoveService(root, cellId);
+	public mxCell removeService(String cellId){
 		add.setVisible(true);
+		return recRemoveService(root, cellId);
 	}
 	
-	private boolean recRemoveService(Node node, String id){
+	private mxCell recRemoveService(Node node, String id){
 		if(node.nt == NodeType.SERVICELIST){
 			for(Node n:node.children){
-				if (recRemoveService(n, id)) return true;
+				mxCell removedCell = recRemoveService(n, id);
+				if (removedCell != null) return removedCell;
 			}
 		}else{
 			if(node.nodeCell != null && id.equals(node.nodeCell.getId())){
 				node.added = false;
-				node.nodeCell.removeFromParent();
-				node.nodeCell = null;
-				return true;
+//				node.nodeCell.removeFromParent();
+				return node.nodeCell;
 			}
 		}
-		return false;
+		return null;
 	}
 
 	public Node addNode(Node parent, NodeType nt, String name){

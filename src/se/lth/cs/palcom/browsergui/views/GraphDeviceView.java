@@ -1,6 +1,5 @@
 package se.lth.cs.palcom.browsergui.views;
 
-import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
@@ -28,11 +27,12 @@ public class GraphDeviceView {
 		return new AddServiceMenu(children, id);
 	}
 	
-	public RemoveServiceMenu createRemoveMenu(mxCell removeCell){
+	public RemoveServiceMenu createRemoveServiceMenu(mxCell removeCell){
 		return new RemoveServiceMenu(removeCell);
 	}
 	
 	class RemoveServiceMenu extends JPopupMenu {
+		private static final long serialVersionUID = 1572216398896616176L;
 		JMenuItem removeItem;
 		mxCell removeCell;
 
@@ -43,12 +43,29 @@ public class GraphDeviceView {
 			removeItem.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 					String parentId = removeCell.getParent().getId();
-					
 					ge.removeVertex(parentId, removeCell.getId());
-//					GraphDevice cg = objectList.get(parentId);
-//					if(cg != null){
-//						cg.removeFunction(removeCell);
-//					}
+				}
+			});
+			add(removeItem);
+		};
+	}
+	
+	
+	public RemoveGraphDeviceMenu createRemoveGraphDeviceMenu(mxCell removeCell){
+		return new RemoveGraphDeviceMenu(removeCell);
+	}
+	class RemoveGraphDeviceMenu extends JPopupMenu {
+		private static final long serialVersionUID = 1572216398896616176L;
+		JMenuItem removeItem;
+		mxCell removeCell;
+
+		public RemoveGraphDeviceMenu(mxCell rmC){
+			removeCell = rmC;
+			removeItem = new JMenuItem("Remove");
+
+			removeItem.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					ge.removeGraphDevice(removeCell.getId(), removeCell);
 				}
 			});
 			add(removeItem);

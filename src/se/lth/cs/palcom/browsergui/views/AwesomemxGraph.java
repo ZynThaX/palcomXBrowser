@@ -9,6 +9,7 @@ import com.mxgraph.view.mxGraph;
 
 public class AwesomemxGraph extends mxGraph {
 	
+//	public 
 	public boolean isPort(Object cell)
 	{
 		mxGeometry geo = getCellGeometry(cell);

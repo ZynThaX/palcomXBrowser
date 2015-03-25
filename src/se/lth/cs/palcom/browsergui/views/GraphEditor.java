@@ -33,6 +33,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.border.Border;
 
 import org.w3c.dom.Document;
@@ -65,6 +66,7 @@ import com.mxgraph.util.mxPoint;
 import com.mxgraph.view.mxEdgeStyle;
 import com.mxgraph.view.mxGraph;
 import com.mxgraph.view.mxMultiplicity;
+import com.mxgraph.view.mxStylesheet;
 
 public class GraphEditor extends JPanel {
 
@@ -159,11 +161,14 @@ public class GraphEditor extends JPanel {
 					String id = cell.getParent().getId();
 					final GraphDevice gD = graphDevices.get(id);
 					if(gD != null){
-						AddServiceMenu menu = gDV.createServiceMenu(gD.root.children, id);
-						menu.show(e.getComponent(), e.getX(), e.getY());
+						JPopupMenu menu = gDV.createServiceMenu(gD.root.children, id);
+						menu.show(e.getComponent(), e.getX()-(int)menu.getPreferredSize().getWidth()/2, e.getY());
 					}
 				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")){
-					RemoveServiceMenu menu = gDV.createRemoveMenu(cell);
+					JPopupMenu menu = gDV.createRemoveServiceMenu(cell);
+			        menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
+				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getId().equals("1")){
+					JPopupMenu menu = gDV.createRemoveGraphDeviceMenu(cell);
 			        menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
 				}
 			}
@@ -178,6 +183,8 @@ public class GraphEditor extends JPanel {
 		graph.setAllowDanglingEdges(false);
 		graph.setCellsDeletable(true);
 		graph.setCellsResizable(false);;
+		graph.setDropEnabled(false);
+		graph.setCellsEditable(false);
 
 		setLayout(new BorderLayout());
 
@@ -239,7 +246,11 @@ public class GraphEditor extends JPanel {
 	
 	public void removeVertex(String parentId, String cellId){
 		GraphDevice gd = graphDevices.get(parentId);
-		gd.removeService(cellId);
+//		gd.removeService(cellId);
+//		graph.removece
+		mxCell removedCell = gd.removeService(cellId);
+		graph.removeCells(new Object[]{removedCell});
+		
 		gd.rerender();
 		graph.refresh();
 	}
@@ -423,6 +434,10 @@ public class GraphEditor extends JPanel {
 	public void addGraphDevice(String key, GraphDevice gd) {
 		graphDevices.put(key, gd);
 	}
+	public void removeGraphDevice(String key, mxCell removeCell) {
+		graphDevices.remove(key);
+		graph.removeCells(new Object[]{removeCell});
+	}
 	
 	public void addSynthService(SynthesizedService n){
 		ssList.add(n);
@@ -435,7 +450,7 @@ public class GraphEditor extends JPanel {
 		DeviceProxy res = (DeviceProxy) data;
 		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + res.getName() + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");
 		cell.setConnectable(false);
-		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 30, 150, 20);
+		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
 		add.setConnectable(false);
 		
 		graph.refresh();
