@@ -162,39 +162,23 @@ public class GraphEditor extends JPanel {
 						AddServiceMenu menu = gDV.createServiceMenu(gD.root.children, id);
 						menu.show(e.getComponent(), e.getX(), e.getY());
 					}
-
 				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")){
-
 					RemoveServiceMenu menu = gDV.createRemoveMenu(cell);
-			        
-	                
 			        menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
-			        
 				}
 			}
 		});
-
-//		Map<String, Object> style = graph.getStylesheet().getDefaultEdgeStyle();
-//		style.put(mxConstants.STYLE_EDGE, mxEdgeStyle.OrthConnector);
 		
 		Map<String, Object> EdgeStyle = graph.getStylesheet().getDefaultEdgeStyle();
 	    EdgeStyle.put(mxConstants.STYLE_EDGE, mxEdgeStyle.OrthConnector);
 	    EdgeStyle.put(mxConstants.STYLE_STROKEWIDTH, 1);
 	    EdgeStyle.put(mxConstants.STYLE_ROUNDED, true);
-//	    EdgeStyle.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ENTITY_RELATION); 
-//	    EdgeStyle.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_CONNECTOR);
-//	    EdgeStyle.put(mxConstants.STYLE_ENDARROW, mxConstants.ARROW_CLASSIC);
-//	    EdgeStyle.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_MIDDLE);
-//	    EdgeStyle.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_CENTER);
-	    
-	    
 	    
 		graph.setHtmlLabels(true);
 		graph.setAllowDanglingEdges(false);
 		graph.setCellsDeletable(true);
 		graph.setCellsResizable(false);;
 
-		
 		setLayout(new BorderLayout());
 
 		JLabel dropArea = new JLabel("<html>Drop<br>device<br>here</html>");
@@ -206,7 +190,6 @@ public class GraphEditor extends JPanel {
 		dropArea.setForeground(Color.WHITE);
 		dropArea.setOpaque(true);
 		dropArea.setTransferHandler(new AssemblyGraphTransferHandler(this));
-
 
 		southPanel.setAutoscrolls(true);
 		southPanel.setBorder(BorderFactory.createLineBorder(lightBlue, 3));
@@ -309,16 +292,9 @@ public class GraphEditor extends JPanel {
 		//se OldschoolAssemblyLoader
 		
 		XmlPullParser factory = new KXmlParser();
-		
 		int topPos = 10;
-		
 		TreeMap<String, GraphDevice> devices = new TreeMap<String, GraphDevice>();
-		TreeMap<String, Node> serviceNodes = new TreeMap<String, Node>();
-
 		TreeMap<GraphDevice, ArrayList<String>> servicesToAdd = new TreeMap<GraphDevice, ArrayList<String>>();
-		
-		
-		
 		PalcomNetwork pcn = discoveryManager.getNetwork();
 		se.lth.cs.palcom.common.collections.List networkDevices = pcn.getDevices();
 		
@@ -333,31 +309,21 @@ public class GraphEditor extends JPanel {
 			factory.nextTag();
 			
 			while(!factory.getName().equals("DeviceDeclList")){
-				String id= factory.getAttributeValue("", "id");
-				if(factory.getName().equals("Identifier") && id != null){
-					
+				String id = factory.getAttributeValue("", "id");
+				if(factory.getName().equals("Identifier") && id != null){					
 					xmlGoTo(factory,"DID");
-					System.out.println("device id: " + factory.getAttributeValue("", "id"));
 					for(int i = 0;i<networkDevices.size();i++){
 						Object device = networkDevices.get(i);
 						if(device instanceof DeviceProxy){
-							DeviceProxy devicep =(DeviceProxy) device;
-							System.out.println(devicep.getDeviceID());
+							DeviceProxy devicep = (DeviceProxy) device;
 							if(devicep.getDeviceID().toString().equals(factory.getAttributeValue("", "id"))){
 								GraphDevice gd = importDevice(topPos, devicep);	
 								devices.put(id, gd);
 							}
 						}
-						System.out.println(networkDevices.get(i).getClass());
-					}
-					
+					}					
 					topPos+=100;
-				}
-				
-				
-				
-				
-				
+				}				
 				factory.nextTag();
 			}
 			
@@ -382,10 +348,6 @@ public class GraphEditor extends JPanel {
 					
 					GraphDevice gd = devices.get(names[1]);
 					
-					
-//					Node serviceNode = gd.addNode(null, NodeType.SERVICE, names[0]);
-					
-					
 					if(servicesToAdd.containsKey(gd)){
 						servicesToAdd.get(gd).add(names[0]);
 					}else{
@@ -393,8 +355,6 @@ public class GraphEditor extends JPanel {
 						nodes.add(names[0]);
 						servicesToAdd.put(gd, nodes);
 					}
-					
-//					serviceNodes.put(serviceId, serviceNode);
 					
 					xmlGoTo(factory,"ServiceDecl");
 				}
@@ -430,7 +390,7 @@ public class GraphEditor extends JPanel {
 //					Node serviceNode = serviceNodes.get(serviceId);
 //					
 //					serviceNode.addCommand(direction.toLowerCase().equals("in"), commandName, type);
-										
+					
 					xmlGoTo(factory,"EventHandlerClause");
 				}
 				factory.nextTag();
@@ -444,16 +404,12 @@ public class GraphEditor extends JPanel {
 			}
 			
 		} catch (UnsupportedEncodingException e) {
-			//TODO
 			e.printStackTrace();
 		} catch (XmlPullParserException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (ResourceException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
