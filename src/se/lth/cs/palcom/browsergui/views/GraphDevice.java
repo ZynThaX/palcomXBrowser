@@ -5,12 +5,13 @@ import java.util.ArrayList;
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
 
-public class GraphDevice {
+public class GraphDevice implements Comparable {
 	final static int PORT_DIAMETER = 20;
 	final int PORT_RADIUS = PORT_DIAMETER / 2;
 	public static mxGeometry geo1 = new mxGeometry(0, 0.5, PORT_DIAMETER,	PORT_DIAMETER);
 	public static mxGeometry geo2 = new mxGeometry(1.0, 0.5, PORT_DIAMETER,PORT_DIAMETER);
 
+	public final static int DEFAULT_HEIGHT = 40;
 	Node root;
 	int height;
 	mxCell cell;
@@ -22,8 +23,32 @@ public class GraphDevice {
 		this.cell = cell;
 		this.add = add;
 		createdCells = new ArrayList<mxCell>();
-		height = 40;
+		height = DEFAULT_HEIGHT;
 		root = new Node(NodeType.SERVICELIST, "root");
+	}
+	
+	public void rerender(){
+		if(!hasUnAddedServices(root)){
+			height = DEFAULT_HEIGHT-20;
+		}else{
+			height = DEFAULT_HEIGHT;			
+		}
+		recRerender(root);
+		
+		cell.getGeometry().setHeight(height);
+	}
+	
+	private void recRerender(Node node){
+		if(node.nt == NodeType.SERVICELIST){
+			for(Node n:node.children){
+				recRerender(n);
+			}
+		}else{
+			if(node.nodeCell != null && node.added){
+				node.nodeCell.getGeometry().setY(height);
+				height += node.getHeight();
+			}
+		}
 	}
 
 
@@ -31,21 +56,25 @@ public class GraphDevice {
 		return cell.getId();
 	}
 
-	public void removeService(mxCell removeCell){
-		recRemoveService(root, removeCell.getId());
+	public mxCell removeService(String cellId){
+		add.setVisible(true);
+		return recRemoveService(root, cellId);
 	}
-	private boolean recRemoveService(Node node, String id){
+	
+	private mxCell recRemoveService(Node node, String id){
 		if(node.nt == NodeType.SERVICELIST){
 			for(Node n:node.children){
-				if (recRemoveService(n, id)) return true;
+				mxCell removedCell = recRemoveService(n, id);
+				if (removedCell != null) return removedCell;
 			}
 		}else{
-			if(node.id.equals(id)){
+			if(node.nodeCell != null && id.equals(node.nodeCell.getId())){
 				node.added = false;
-				return true;
+//				node.nodeCell.removeFromParent();
+				return node.nodeCell;
 			}
 		}
-		return false;
+		return null;
 	}
 
 	public Node addNode(Node parent, NodeType nt, String name){
@@ -54,7 +83,6 @@ public class GraphDevice {
 		}
 		Node n = new Node(nt, name);
 		parent.children.add(n);
-//		System.out.println("Added node: "+ name);
 		return n;
 	}
 	
@@ -86,14 +114,20 @@ public class GraphDevice {
 		String id;
 		mxCell nodeCell;
 		
-		ArrayList<Command> commands;
+		ArrayList<Command> inCommands;		
+		ArrayList<Command> outCommands;
+		
+		public int getHeight(){
+			return Math.max(30*Math.max(inCommands.size(), outCommands.size()),20);
+		}
 		
 		public Node(NodeType nt, String name){
 			children = new ArrayList<Node>();
 			this.nt = nt;
 			this.name = name;
 			added = false;
-			commands = new ArrayList<GraphDevice.Command>();
+			inCommands = new ArrayList<GraphDevice.Command>();
+			outCommands = new ArrayList<GraphDevice.Command>();
 		}
 		
 		public void add(NodeType nt, String name){
@@ -101,12 +135,18 @@ public class GraphDevice {
 		}
 		
 		public void addCommand(boolean in, String name, String type){
-//			System.out.println("  added command: " + name );
-			commands.add(new Command(in, name, type));
+			if(in){
+				inCommands.add(new Command(in, name, type));
+			}else{
+				outCommands.add(new Command(in, name, type));
+			}
 		}
 		
-		public ArrayList<Command> getCommands(){
-			return commands;
+		public ArrayList<Command> getInCommands(){
+			return inCommands;
+		}
+		public ArrayList<Command> getOutCommands(){
+			return outCommands;
 		}
 	}
 	
@@ -117,36 +157,6 @@ public class GraphDevice {
 		}
 		return node;
 	}
-	
-	public boolean hasUnAddedServices(Node node){
-		if(node.nt == NodeType.SERVICELIST){
-			for(Node n:node.children){
-				if(hasUnAddedServices(n)) return true;
-			}
-		}else{
-			return !node.added;
-		}
-		return false;
-	}
-	
-	public Node getUnaddedService(Node node){
-		if(node == null)
-			node = root;
-		
-		if(node.nt == NodeType.SERVICELIST){
-			for(Node n:node.children){
-				Node n2 = getUnaddedService(n);
-				if(n2 != null)
-					return n2;
-			}
-		}else{
-			if(!node.added){
-				return node;
-			}
-		}
-		return null;
-	}
-	
 	public Node recAddService(Node node, String name){
 		if(node.nt == NodeType.SERVICELIST){
 			for(Node n:node.children){
@@ -162,16 +172,29 @@ public class GraphDevice {
 		return null;
 	}
 
-	
+	private boolean hasUnAddedServices(Node node){
+		if(node.nt == NodeType.SERVICELIST){
+			for(Node n:node.children){
+				if(hasUnAddedServices(n)) return true;
+			}
+		}else{
+			return !node.added;
+		}
+		return false;
+	}
+
 	public enum NodeType {
 		SERVICE, SERVICELIST 
 	}
 
 
-	public double increseHeight(int addHeight) {
-		int oldHeight = height;
-		height+=addHeight+10;
-		return oldHeight;
+	public int compareTo(Object o) {	
+		if(o instanceof GraphDevice){
+			GraphDevice gd = (GraphDevice) o;
+			return cell.getId().compareTo(gd.cell.getId());
+		}else{
+			return -1;
+		}
 	}
 
 }

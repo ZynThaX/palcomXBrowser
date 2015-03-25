@@ -1,5 +1,8 @@
 package se.lth.cs.palcom.browsergui.views;
 
+import internal.org.kxml2.io.KXmlParser;
+import internal.org.xmlpull.v1.XmlPullParser;
+import internal.org.xmlpull.v1.XmlPullParserException;
 import ist.palcom.resource.descriptor.ASTNode;
 import ist.palcom.resource.descriptor.CommandInfo;
 import ist.palcom.resource.descriptor.ControlInfo;
@@ -7,7 +10,6 @@ import ist.palcom.resource.descriptor.List;
 import ist.palcom.resource.descriptor.PRDServiceFMDescription;
 import ist.palcom.resource.descriptor.ParamInfo;
 import ist.palcom.resource.descriptor.SynthesizedService;
-import ist.palcom.xml.XMLFactory;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -31,6 +33,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.border.Border;
 
 import org.w3c.dom.Document;
@@ -41,12 +44,15 @@ import se.lth.cs.palcom.browsergui.views.GraphDevice.Command;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.NodeType;
 import se.lth.cs.palcom.browsergui.views.GraphDeviceView.AddServiceMenu;
+import se.lth.cs.palcom.browsergui.views.GraphDeviceView.RemoveServiceMenu;
 import se.lth.cs.palcom.discovery.DeviceProxy;
+import se.lth.cs.palcom.discovery.DiscoveryManager;
 import se.lth.cs.palcom.discovery.PalcomControlServiceDescription;
 import se.lth.cs.palcom.discovery.PalcomServiceDescription;
 import se.lth.cs.palcom.discovery.ResourceException;
 import se.lth.cs.palcom.discovery.ServiceListProxy;
 import se.lth.cs.palcom.discovery.ServiceProxy;
+import se.lth.cs.palcom.discovery.proxy.PalcomNetwork;
 import se.lth.cs.palcom.discovery.proxy.PalcomServiceList;
 import se.lth.cs.palcom.discovery.proxy.PalcomServiceListPart;
 
@@ -57,14 +63,10 @@ import com.mxgraph.swing.handler.mxKeyboardHandler;
 import com.mxgraph.util.mxConstants;
 import com.mxgraph.util.mxDomUtils;
 import com.mxgraph.util.mxPoint;
-import com.mxgraph.util.svg.Parser;
 import com.mxgraph.view.mxEdgeStyle;
 import com.mxgraph.view.mxGraph;
 import com.mxgraph.view.mxMultiplicity;
-
-import internal.org.kxml2.io.KXmlParser;
-import internal.org.xmlpull.v1.XmlPullParser;
-import internal.org.xmlpull.v1.XmlPullParserException;
+import com.mxgraph.view.mxStylesheet;
 
 public class GraphEditor extends JPanel {
 
@@ -77,7 +79,7 @@ public class GraphEditor extends JPanel {
 	private GraphDeviceView gDV;
 	private JPanel southPanel;
 	private JPanel centerPanel;
-
+	private DiscoveryManager discoveryManager;
 
 	public static int PORT_DIAMETER = 20;
 	public static int PORT_RADIUS = PORT_DIAMETER / 2;
@@ -124,7 +126,8 @@ public class GraphEditor extends JPanel {
 	}
 	
 	
-	public GraphEditor(){
+	public GraphEditor(DiscoveryManager discoveryManager){
+		this.discoveryManager = discoveryManager;
 		ssList = new ArrayList<SynthesizedService>();
 		graph = new AwesomemxGraph();
 		graphDevices = new TreeMap<String, GraphDevice>();
@@ -158,37 +161,31 @@ public class GraphEditor extends JPanel {
 					String id = cell.getParent().getId();
 					final GraphDevice gD = graphDevices.get(id);
 					if(gD != null){
-						AddServiceMenu menu = gDV.createServiceMenu(gD.root.children, id);
-						menu.show(e.getComponent(), e.getX(), e.getY());
+						JPopupMenu menu = gDV.createServiceMenu(gD.root.children, id);
+						menu.show(e.getComponent(), e.getX()-(int)menu.getPreferredSize().getWidth()/2, e.getY());
 					}
-
 				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")){
-					//TODO, rightclick
+					JPopupMenu menu = gDV.createRemoveServiceMenu(cell);
+			        menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
+				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getId().equals("1")){
+					JPopupMenu menu = gDV.createRemoveGraphDeviceMenu(cell);
+			        menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
 				}
 			}
 		});
-
-//		Map<String, Object> style = graph.getStylesheet().getDefaultEdgeStyle();
-//		style.put(mxConstants.STYLE_EDGE, mxEdgeStyle.OrthConnector);
 		
 		Map<String, Object> EdgeStyle = graph.getStylesheet().getDefaultEdgeStyle();
 	    EdgeStyle.put(mxConstants.STYLE_EDGE, mxEdgeStyle.OrthConnector);
 	    EdgeStyle.put(mxConstants.STYLE_STROKEWIDTH, 1);
 	    EdgeStyle.put(mxConstants.STYLE_ROUNDED, true);
-//	    EdgeStyle.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ENTITY_RELATION); 
-//	    EdgeStyle.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_CONNECTOR);
-//	    EdgeStyle.put(mxConstants.STYLE_ENDARROW, mxConstants.ARROW_CLASSIC);
-//	    EdgeStyle.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_MIDDLE);
-//	    EdgeStyle.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_CENTER);
-	    
-	    
 	    
 		graph.setHtmlLabels(true);
 		graph.setAllowDanglingEdges(false);
 		graph.setCellsDeletable(true);
 		graph.setCellsResizable(false);;
+		graph.setDropEnabled(false);
+		graph.setCellsEditable(false);
 
-		
 		setLayout(new BorderLayout());
 
 		JLabel dropArea = new JLabel("<html>Drop<br>device and <br>SS here</html>");
@@ -200,7 +197,6 @@ public class GraphEditor extends JPanel {
 		dropArea.setForeground(Color.WHITE);
 		dropArea.setOpaque(true);
 		dropArea.setTransferHandler(new AssemblyGraphTransferHandler(this));
-
 
 		southPanel.setAutoscrolls(true);
 		southPanel.setBorder(BorderFactory.createLineBorder(lightBlue, 3));
@@ -233,27 +229,29 @@ public class GraphEditor extends JPanel {
 	}
 
 	public void addVertex(String id, String name) {
-		ArrayList<Command> inCommands = new ArrayList<Command>();
-		ArrayList<Command> outCommands = new ArrayList<Command>();
-		
 		GraphDevice gd = graphDevices.get(id);
-				
-		for(Command c:gd.addService(name).getCommands()){
-			if(c.isIn()){
-				inCommands.add(c);
-			}else{
-				outCommands.add(c);
-			}
-		}
+		Node n = gd.addService(name);
+		
+		mxCell nodeCell = (mxCell) graph.insertVertex(gd.cell, null, name, 0, 0, 150, n.getHeight());
+		nodeCell.setConnectable(false);
+		
+		n.nodeCell = nodeCell;
+		
+		createPorts(n.getInCommands(),true,nodeCell);
+		createPorts(n.getOutCommands(),false,nodeCell);
 
-		int height = Math.max(Math.max(inCommands.size(), outCommands.size())*30,20);
-				
-		mxCell newService = (mxCell) graph.insertVertex(gd.cell, null, name, 0, gd.increseHeight(height), 150, height, "");
-		newService.setConnectable(false);
+		gd.rerender();
+		graph.refresh();
+	}
+	
+	public void removeVertex(String parentId, String cellId){
+		GraphDevice gd = graphDevices.get(parentId);
+//		gd.removeService(cellId);
+//		graph.removece
+		mxCell removedCell = gd.removeService(cellId);
+		graph.removeCells(new Object[]{removedCell});
 		
-		createPorts(inCommands,true,newService);
-		createPorts(outCommands,false,newService);
-		
+		gd.rerender();
 		graph.refresh();
 	}
 	
@@ -305,11 +303,12 @@ public class GraphEditor extends JPanel {
 		//se OldschoolAssemblyLoader
 		
 		XmlPullParser factory = new KXmlParser();
-		
 		int topPos = 10;
-		
 		TreeMap<String, GraphDevice> devices = new TreeMap<String, GraphDevice>();
-		TreeMap<String, Node> serviceNodes = new TreeMap<String, Node>();
+		TreeMap<GraphDevice, ArrayList<String>> servicesToAdd = new TreeMap<GraphDevice, ArrayList<String>>();
+		PalcomNetwork pcn = discoveryManager.getNetwork();
+		se.lth.cs.palcom.common.collections.List networkDevices = pcn.getDevices();
+		
 		
 		try {
 			byte[] xmlBytes = assemblyData.getBytes("UTF8");
@@ -321,23 +320,21 @@ public class GraphEditor extends JPanel {
 			factory.nextTag();
 			
 			while(!factory.getName().equals("DeviceDeclList")){
-				String id= factory.getAttributeValue("", "id");
-				if(factory.getName().equals("Identifier") && id != null){
-					mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + id + "</b>", 150, topPos, 100, 30, "verticalAlign=top;textAlign=center");
-					cell.setConnectable(false);
-					mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
-					add.setConnectable(false);
-
-					graph.refresh();
-					GraphDevice gd = new GraphDevice(cell, add);
-										
-					devices.put(id, gd);
-
-					addGraphDevice(cell.getId(), gd);
-					
+				String id = factory.getAttributeValue("", "id");
+				if(factory.getName().equals("Identifier") && id != null){					
+					xmlGoTo(factory,"DID");
+					for(int i = 0;i<networkDevices.size();i++){
+						Object device = networkDevices.get(i);
+						if(device instanceof DeviceProxy){
+							DeviceProxy devicep = (DeviceProxy) device;
+							if(devicep.getDeviceID().toString().equals(factory.getAttributeValue("", "id"))){
+								GraphDevice gd = importDevice(topPos, devicep);	
+								devices.put(id, gd);
+							}
+						}
+					}					
 					topPos+=100;
-				}
-				
+				}				
 				factory.nextTag();
 			}
 			
@@ -354,16 +351,21 @@ public class GraphEditor extends JPanel {
 					
 					xmlGoTo(factory,"SingleServiceDecl");
 					xmlGoTo(factory,"Identifier");
-					names[0] = factory.getAttributeValue("", "id");
+					names[0] = factory.getAttributeValue("", "id");//Service name
 					
 					xmlGoTo(factory,"DeviceUse");
 					xmlGoTo(factory,"Identifier");
 					names[1] = factory.getAttributeValue("", "id");//device name
 					
 					GraphDevice gd = devices.get(names[1]);
-					Node serviceNode = gd.addNode(null, NodeType.SERVICE, names[0]);
 					
-					serviceNodes.put(serviceId, serviceNode);
+					if(servicesToAdd.containsKey(gd)){
+						servicesToAdd.get(gd).add(names[0]);
+					}else{
+						ArrayList<String> nodes = new ArrayList<String>();
+						nodes.add(names[0]);
+						servicesToAdd.put(gd, nodes);
+					}
 					
 					xmlGoTo(factory,"ServiceDecl");
 				}
@@ -380,6 +382,8 @@ public class GraphEditor extends JPanel {
 			
 			while(!factory.getName().equals("EventHandlerList")){
 				if(factory.getName().equals("EventHandlerClause")){
+					// TODO, detta för att avgöra var anslutningarna e gjorda
+					
 					xmlGoTo(factory,"CommandEvent");
 					commandName = factory.getAttributeValue("", "commandName");
 					
@@ -394,29 +398,29 @@ public class GraphEditor extends JPanel {
 						type = factory.getAttributeValue("", "type");
 					}
 					
-					Node serviceNode = serviceNodes.get(serviceId);
+//					Node serviceNode = serviceNodes.get(serviceId);
+//					
+//					serviceNode.addCommand(direction.toLowerCase().equals("in"), commandName, type);
 					
-					serviceNode.addCommand(direction.toLowerCase().equals("in"), commandName, type);
-										
 					xmlGoTo(factory,"EventHandlerClause");
 				}
 				factory.nextTag();
 			}
 
-			for(String s:graphDevices.keySet()){
-				GraphDevice gd = graphDevices.get(s);
-				Node n = gd.getUnaddedService(null);
-				addVertex(gd.getId(), n.name);
+			for(GraphDevice gd:servicesToAdd.keySet()){
+				ArrayList<String> nodes = servicesToAdd.get(gd);
+				for(String nodeName:nodes){
+					addVertex(gd.getId(), nodeName);
+				}
 			}
 			
 		} catch (UnsupportedEncodingException e) {
-			//TODO
 			e.printStackTrace();
 		} catch (XmlPullParserException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ResourceException e) {
 			e.printStackTrace();
 		}
 	}
@@ -430,6 +434,10 @@ public class GraphEditor extends JPanel {
 	public void addGraphDevice(String key, GraphDevice gd) {
 		graphDevices.put(key, gd);
 	}
+	public void removeGraphDevice(String key, mxCell removeCell) {
+		graphDevices.remove(key);
+		graph.removeCells(new Object[]{removeCell});
+	}
 	
 	public void addSynthService(SynthesizedService n){
 		ssList.add(n);
@@ -441,13 +449,13 @@ public class GraphEditor extends JPanel {
 	public ArrayList<SynthesizedService> getSynthServices(){
 		return ssList;
 	}
-	public void importDevice(int y, DeviceProxy data) throws ResourceException {
+	public GraphDevice importDevice(int y, DeviceProxy data) throws ResourceException {
 		DeviceProxy res = (DeviceProxy) data;
 		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + res.getName() + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");
 		cell.setConnectable(false);
 		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
 		add.setConnectable(false);
-
+		
 		graph.refresh();
 		GraphDevice gd = new GraphDevice(cell, add);
 
@@ -458,6 +466,7 @@ public class GraphEditor extends JPanel {
 		}
 
 		addGraphDevice(cell.getId(), gd);
+		return gd;
 	}
 
 	private void recrusiveGetServices(Node parent, GraphDevice gd, PalcomServiceListPart psp) throws ResourceException {
