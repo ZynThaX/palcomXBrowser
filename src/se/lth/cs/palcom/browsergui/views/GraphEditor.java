@@ -191,7 +191,7 @@ public class GraphEditor extends JPanel {
 		
 		setLayout(new BorderLayout());
 
-		JLabel dropArea = new JLabel("<html>Drop<br>device<br>here</html>");
+		JLabel dropArea = new JLabel("<html>Drop<br>device and <br>SS here</html>");
 		Border paddingBorder = BorderFactory.createEmptyBorder(10,10,10,10);
 		Color lightBlue = new Color(202, 221, 237);
 		Border border = BorderFactory.createLineBorder(Color.GRAY);
@@ -206,7 +206,7 @@ public class GraphEditor extends JPanel {
 		southPanel.setBorder(BorderFactory.createLineBorder(lightBlue, 3));
 		//southPanel.setPreferredSize(new Dimension(100, 150));
 		final GraphSynthServicePanel servicePanel = new GraphSynthServicePanel(this);
-		final String buttonLabel = "Synthesised Services";
+		final String buttonLabel = "Synthesised Services (SS)";
 		final JButton synthServiceBtn = new JButton("︾" + " " + buttonLabel);
 		synthServiceBtn.setBackground(lightBlue);
 		synthServiceBtn.setBorder(null);
@@ -434,6 +434,9 @@ public class GraphEditor extends JPanel {
 	public void addSynthService(SynthesizedService n){
 		ssList.add(n);
 	}
+	public void removeSynthService(SynthesizedService ss) {
+		ssList.remove(ss);		
+	}
 	
 	public ArrayList<SynthesizedService> getSynthServices(){
 		return ssList;
@@ -504,4 +507,6 @@ public class GraphEditor extends JPanel {
 			}
 		}
 	}
+
+	
 }

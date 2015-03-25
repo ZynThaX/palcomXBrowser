@@ -23,49 +23,44 @@ import java.awt.dnd.DragSourceDragEvent;
 import java.awt.dnd.DragSourceDropEvent;
 import java.awt.dnd.DragSourceEvent;
 import java.awt.dnd.DragSourceListener;
-import java.awt.dnd.DropTargetDragEvent;
-import java.awt.dnd.DropTargetDropEvent;
-import java.awt.dnd.DropTargetEvent;
-import java.awt.dnd.DropTargetListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Enumeration;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JList;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTree;
-import javax.swing.ListCellRenderer;
 import javax.swing.SwingUtilities;
-import javax.swing.border.Border;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-import javax.swing.border.TitledBorder;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreePath;
 
+import se.lth.cs.palcom.browsergui.AddCommandDialog;
 import se.lth.cs.palcom.browsergui.AddSynthServiceDialog;
 import se.lth.cs.palcom.browsergui.AssemblyDroptarget;
-import se.lth.cs.palcom.browsergui.AssemblyPanel.AssemblyTreeNode;
+import se.lth.cs.palcom.browsergui.views.GraphSynthServiceMenues.RemoveSSMenu;
 import se.lth.cs.palcom.discovery.proxy.Resource;
+import EDU.oswego.cs.dl.util.concurrent.Executor;
+import EDU.oswego.cs.dl.util.concurrent.ThreadedExecutor;
 
 public class GraphSynthServicePanel extends JPanel {
 	private JButton addSynthService;
 	private GraphEditor ge;
 	private JPanel servicePanel;
-
+	private GraphSynthServiceMenues menues;
+	private final Executor taskExecutor = new ThreadedExecutor();
+	
 	public GraphSynthServicePanel(GraphEditor ge) {
 		this.ge = ge;
+		menues = new GraphSynthServiceMenues();
 		final GraphSynthServicePanel thisPanel = this;
 		setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createMatteBorder(0, 1, 1, 1, Color.GRAY),
@@ -95,9 +90,12 @@ public class GraphSynthServicePanel extends JPanel {
 
 	public void addService(SynthesizedService ss) {
 		ge.addSynthService(ss);
-		System.out.println("Created new synthesised service");
 		displayServices();
-		// TODO Show synthesised services in the GUI
+	}
+	
+	public void removeService(SynthesizedService ss) {
+		ge.removeSynthService(ss);
+		displayServices();
 	}
 
 	public void displayServices() {
@@ -105,6 +103,7 @@ public class GraphSynthServicePanel extends JPanel {
 		for (SynthesizedService ss : ge.getSynthServices()) {
 			servicePanel.add(new ServiceObjGUI(ss));
 		}
+		servicePanel.repaint();
 	}
 
 	public void toggle() {
@@ -115,11 +114,13 @@ public class GraphSynthServicePanel extends JPanel {
 		}
 	}
 
-	private class ServiceObjGUI extends JPanel implements DragGestureListener,
-			DragSourceListener {
+	
+
+	public class ServiceObjGUI extends JPanel implements DragGestureListener,
+			DragSourceListener, ActionListener {
 		SynthesizedService ss;
 		DragSource dragSource;
-
+		JTree tree;
 		public ServiceObjGUI(SynthesizedService ss) {
 			this.ss = ss;
 			this.setPreferredSize(new Dimension(100, 100));
@@ -131,9 +132,9 @@ public class GraphSynthServicePanel extends JPanel {
 			// this.setAutoscrolls(true);
 			DefaultTreeModel model = new DefaultTreeModel(
 					new DefaultMutableTreeNode("NULL"));
-			JTree t = new JTree(model);
-			model.setRoot(new SynthServiceNode(ss));
-			DefaultTreeCellRenderer renderer = (DefaultTreeCellRenderer) (t
+			tree = new JTree(model);
+			model.setRoot(new SynthServiceNode(ss, this));
+			DefaultTreeCellRenderer renderer = (DefaultTreeCellRenderer) (tree
 					.getCellRenderer());
 			renderer.setBackgroundNonSelectionColor(deviceBlue);
 			renderer.setBackgroundSelectionColor(deviceBlue);
@@ -144,56 +145,120 @@ public class GraphSynthServicePanel extends JPanel {
 			// p.setBackground(new Color(196, 219, 255));
 			// p.setPreferredSize(new Dimension(100, 100));
 			// p.add(t);
-			t.setBackground(new Color(196, 219, 255));
-			t.setScrollsOnExpand(false);
-			t.collapseRow(0);
+			tree.setBackground(new Color(196, 219, 255));
+			tree.setScrollsOnExpand(false);
+			tree.collapseRow(0);
 			dragSource = new DragSource();
 			dragSource.createDefaultDragGestureRecognizer(this,
 					DnDConstants.ACTION_COPY_OR_MOVE, this);
-			add(t);
+			add(tree);
+			
+			
+			tree.addMouseListener(new MouseListener() {
+				public void mouseReleased(MouseEvent e) { doPopup(e);}
+				public void mousePressed(MouseEvent e) {doPopup(e);}
+				public void mouseExited(MouseEvent e) { }
+				public void mouseEntered(MouseEvent e) { }
+				public void mouseClicked(MouseEvent e) { }
+			});
+			
+			
+			
+			
+			this.addMouseListener(new MouseListener(){
+				public void mouseReleased(MouseEvent e) {
+				    if(SwingUtilities.isRightMouseButton(e)){
+				        RemoveSSMenu rssm = menues.createRemoveSSMenu(ServiceObjGUI.this, ServiceObjGUI.this.ss);
+				        rssm.show(ServiceObjGUI.this, e.getX(), e.getY());
+				    }
+				}
+				public void mouseClicked(MouseEvent e) {}
+				public void mousePressed(MouseEvent e) {}
+				public void mouseEntered(MouseEvent e) {}
+				public void mouseExited(MouseEvent e) {}
+			});
+			
+			
+			
+		}
+		
+		private void doPopup(MouseEvent me) {
+			if (me.isPopupTrigger()) {
+				TreePath selectionPath = tree.getPathForLocation(me.getX(), me.getY());
+				if (selectionPath == null) {
+					return;
+				}
+				tree.setSelectionPath(selectionPath);
+				TreeNode node = (TreeNode) selectionPath.getLastPathComponent();
+				if (node instanceof AssemblyTreeNode) {
+					((AssemblyTreeNode)node).showContextMenu(me.getX(), me.getY());
+				}
+			}
 		}
 
+		
+		
 		public void dragEnter(DragSourceDragEvent dsde) {
-			// TODO Auto-generated method stub
-			System.out.println("drag enter");
+			dsde.getDragSourceContext().setCursor(DragSource.DefaultCopyDrop);
 		}
-
-		public void dragOver(DragSourceDragEvent dsde) {
-			// TODO Auto-generated method stub
-
-		}
-
-		public void dropActionChanged(DragSourceDragEvent dsde) {
-			// TODO Auto-generated method stub
-
-		}
-
+		public void dragOver(DragSourceDragEvent dsde) {}
+		public void dropActionChanged(DragSourceDragEvent dsde) {}
 		public void dragExit(DragSourceEvent dse) {
-			// TODO Auto-generated method stub
 			this.setBorder(BorderFactory.createLineBorder(new Color(109, 134, 173)));
-
+			dse.getDragSourceContext().setCursor(DragSource.DefaultMoveNoDrop);
 		}
-
 		public void dragDropEnd(DragSourceDropEvent dsde) {
-			// TODO Auto-generated method stub
 			this.setBorder(BorderFactory.createLineBorder(new Color(109, 134, 173)));
 		}
-
 		public void dragGestureRecognized(DragGestureEvent dge) {
 			Transferable transferable = new StringSelection("hellow");
 			this.setBorder(BorderFactory.createDashedBorder(Color.GREEN));
 			dragSource.startDrag(dge, DragSource.DefaultMoveNoDrop, transferable,
 					this);
 		}
+		
+		
+		public void actionPerformed(ActionEvent e) {
+			String cmd = e.getActionCommand();
+			if (cmd.equals("removeSS")) {
+				RemoveSSMenu rm = (RemoveSSMenu) ((JMenuItem)e.getSource()).getParent();
+				removeService(rm.ss);
+			} else if(cmd.equals("AddCommand")){
+				final TreeNode node = (TreeNode) tree.getSelectionPath().getLastPathComponent();
+				try {
+					taskExecutor.execute(new Runnable() {
+						public void run() {
+							//String[] vals = twoStringsDialog.getStrings("Name", "Direction", "", "in");
+							String[] vals = AddCommandDialog.getStrings(GraphSynthServicePanel.this);
+							if (node instanceof ServiceDescriptionTreeNode) {
+//								((ServiceDescriptionTreeNode)node).addCommand(vals[0], vals[1]);
+//							} else if (node instanceof GroupTreeNode) {
+//								((GroupTreeNode)node).addCommand(vals[0], vals[1]);
+							}
+						}
+					});
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				System.out.println("Add command");
+			} else if(cmd.equals("AddGroup")){
+				System.out.println("Add group");
+			} else if(cmd.equals("DeleteSSD")){
+				System.out.println("Delete ss description");
+			}
+
+		}
 
 	}
+	
 
 	private class SynthServiceNode extends AssemblyTreeNode<SynthesizedService> {
-		public SynthServiceNode(SynthesizedService service) {
+		public SynthServiceNode(SynthesizedService service, ServiceObjGUI ssobj) {
 			super("");
 			this.data = service;
-			add(new ServiceDescriptionTreeNode(
-					service.getPRDServiceFMDescription()));
+			ServiceDescriptionTreeNode sdtNode = new ServiceDescriptionTreeNode(service.getPRDServiceFMDescription(), ssobj);
+			add(sdtNode);
 			this.setUserObject(getLabel());
 		}
 
@@ -256,18 +321,23 @@ public class GraphSynthServicePanel extends JPanel {
 		}
 	}
 
+
 	private class ServiceDescriptionTreeNode extends
 			AssemblyTreeNode<PRDServiceFMDescription> {
-		public ServiceDescriptionTreeNode(PRDServiceFMDescription description) {
+		JPopupMenu serviceDescrptionMenu;
+		ServiceObjGUI ssobj;
+		public ServiceDescriptionTreeNode(PRDServiceFMDescription description, ServiceObjGUI ssobj) {
 			super("ServiceDescription");
+			this.ssobj = ssobj;
+			serviceDescrptionMenu = menues.createServiceDescriptionMenu(ssobj);
 			this.data = description;
-
+			
 			for (int i = 0; i < data.getNumControlInfo(); ++i) {
 				ControlInfo ci = data.getControlInfo(i);
 				if (ci instanceof CommandInfo) {
-					// add(new CommandTreeNode((CommandInfo) ci));
+//					add(new CommandTreeNode((CommandInfo) ci));
 				} else if (ci instanceof GroupInfo) {
-					// add(new GroupTreeNode((GroupInfo) ci));
+//					add(new GroupTreeNode((GroupInfo) ci));
 				}
 			}
 		}
@@ -279,34 +349,34 @@ public class GraphSynthServicePanel extends JPanel {
 
 		@Override
 		public void showContextMenu(int x, int y) {
-			// serviceDescrptionMenu.show(assemblyTree, x, y);
+			serviceDescrptionMenu.show(ssobj, x, y);
 		}
-
-		void addCommand(String name, String direction) {
-			CommandInfo ci = new CommandInfo(name, direction);
-			ci.setCommandNumber(data.findHighestCommandNumber() + 1);
-			data.addControlInfo(ci);
-			// add(new CommandTreeNode(ci));
-			SwingUtilities.invokeLater(new Runnable() {
-				public void run() {
-					// model.nodesWereInserted(ServiceDescriptionTreeNode.this,
-					// new int[] {getChildCount() - 1});
-				}
-			});
-			// setUnsaved(true);
-		}
-
-		public void addGroup(String name, String help) {
-			GroupInfo gi = new GroupInfo(name, help);
-			data.addControlInfo(gi);
-			// add(new GroupTreeNode(gi));
-			SwingUtilities.invokeLater(new Runnable() {
-				public void run() {
-					// model.nodesWereInserted(ServiceDescriptionTreeNode.this,
-					// new int[] {getChildCount() - 1});
-				}
-			});
-			// setUnsaved(true);
-		}
+//
+//		void addCommand(String name, String direction) {
+//			CommandInfo ci = new CommandInfo(name, direction);
+//			ci.setCommandNumber(data.findHighestCommandNumber() + 1);
+//			data.addControlInfo(ci);
+//			add(new CommandTreeNode(ci));
+//			SwingUtilities.invokeLater(new Runnable() {
+//				public void run() {
+//					 model.nodesWereInserted(ServiceDescriptionTreeNode.this,
+//					 new int[] {getChildCount() - 1});
+//				}
+//			});
+//			// setUnsaved(true);
+//		}
+//
+//		public void addGroup(String name, String help) {
+//			GroupInfo gi = new GroupInfo(name, help);
+//			data.addControlInfo(gi);
+//			// add(new GroupTreeNode(gi));
+//			SwingUtilities.invokeLater(new Runnable() {
+//				public void run() {
+//					// model.nodesWereInserted(ServiceDescriptionTreeNode.this,
+//					// new int[] {getChildCount() - 1});
+//				}
+//			});
+//			// setUnsaved(true);
+//		}
 	}
 }
