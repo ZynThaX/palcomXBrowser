@@ -45,6 +45,7 @@ import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.NodeType;
 import se.lth.cs.palcom.browsergui.views.GraphDeviceView.AddServiceMenu;
 import se.lth.cs.palcom.browsergui.views.GraphDeviceView.RemoveServiceMenu;
+import se.lth.cs.palcom.browsergui.views.GraphSynthServicePanel.ServiceObjGUI;
 import se.lth.cs.palcom.discovery.DeviceProxy;
 import se.lth.cs.palcom.discovery.DiscoveryManager;
 import se.lth.cs.palcom.discovery.PalcomControlServiceDescription;
@@ -72,7 +73,7 @@ public class GraphEditor extends JPanel {
 
 	private static final long serialVersionUID = 8906103669540394160L;
 	private HashSet<DeviceProxy> devices;
-	private ArrayList<SynthesizedService> ssList;
+	private ArrayList<ServiceObjGUI> ssList;
 	private String assemblyData;
 	private mxGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
@@ -128,7 +129,7 @@ public class GraphEditor extends JPanel {
 	
 	public GraphEditor(DiscoveryManager discoveryManager){
 		this.discoveryManager = discoveryManager;
-		ssList = new ArrayList<SynthesizedService>();
+		ssList = new ArrayList<ServiceObjGUI>();
 		graph = new AwesomemxGraph();
 		graphDevices = new TreeMap<String, GraphDevice>();
 		gDV = new GraphDeviceView(this);
@@ -439,14 +440,19 @@ public class GraphEditor extends JPanel {
 		graph.removeCells(new Object[]{removeCell});
 	}
 	
-	public void addSynthService(SynthesizedService n){
-		ssList.add(n);
+	public void addSynthService(ServiceObjGUI serviceObjGUI){
+		ssList.add(serviceObjGUI);
 	}
 	public void removeSynthService(SynthesizedService ss) {
-		ssList.remove(ss);		
+		for(int i = 0; i<ssList.size(); i++){
+			if(ssList.get(i).equals(ss)){
+				ssList.remove(i);
+				break;
+			}
+		}	
 	}
 	
-	public ArrayList<SynthesizedService> getSynthServices(){
+	public ArrayList<ServiceObjGUI> getSynthServices(){
 		return ssList;
 	}
 	public GraphDevice importDevice(int y, DeviceProxy data) throws ResourceException {

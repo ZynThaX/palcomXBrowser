@@ -23,8 +23,12 @@ public class GraphSynthServiceMenues {
 		return new CommandMenu(serviceObjGUI);
 	}
 	
-	public JPopupMenu createServiceDescriptionMenu(ServiceObjGUI serviceObjGUI) {
-		return new ServiceDescriptionMenu(serviceObjGUI);
+	public JPopupMenu createDeviceMenu(ServiceObjGUI serviceObjGUI) {
+		return new DeleteMenu(serviceObjGUI);
+	}
+	
+	public JPopupMenu createServiceDescriptionMenu(ServiceObjGUI serviceObjGUI, SynthesizedService ss) {
+		return new ServiceDescriptionMenu(serviceObjGUI, ss);
 	}
 
 	public class RemoveSSMenu extends JPopupMenu  {
@@ -48,14 +52,16 @@ public class GraphSynthServiceMenues {
 			addParam.addActionListener(serviceObjGUI);
 			addParam.setActionCommand("AddParam");
 			JMenuItem del = new JMenuItem("Delete");
-			del.setActionCommand("Delete");
+			del.setActionCommand("DeleteSSD");
 			del.addActionListener(serviceObjGUI);
 			add(addParam);
 			add(del);
 		}
 	}
 	public class ServiceDescriptionMenu extends JPopupMenu {
-		public ServiceDescriptionMenu(ServiceObjGUI serviceObjGUI) {
+		SynthesizedService ss;
+		public ServiceDescriptionMenu(ServiceObjGUI serviceObjGUI, SynthesizedService ss) {
+			this.ss = ss;
 			JMenuItem addCommand = new JMenuItem("Add Command");
 			addCommand.addActionListener(serviceObjGUI);
 			addCommand.setActionCommand("AddCommand");
@@ -70,6 +76,24 @@ public class GraphSynthServiceMenues {
 			del.setActionCommand("DeleteSSD");
 			del.addActionListener(serviceObjGUI);
 			add(del);
+		}
+		public void show(Component comp, int x, int y) {
+			super.show(comp, x, y);
+		}
+	}
+	
+	private final class DeleteMenu extends JPopupMenu  {
+		public DeleteMenu(ServiceObjGUI serviceObjGUI) {
+			JMenuItem del = new JMenuItem("Delete");
+			del.setActionCommand("DeleteSSD");
+			del.addActionListener(serviceObjGUI);
+			
+//			JMenuItem makeSelf = new JMenuItem("Make Self");
+//			makeSelf.setActionCommand("self");
+//			makeSelf.addActionListener(serviceObjGUI);
+//			
+			add(del);
+//			add(makeSelf);
 		}
 		public void show(Component comp, int x, int y) {
 			super.show(comp, x, y);

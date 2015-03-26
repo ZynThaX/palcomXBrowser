@@ -6,6 +6,7 @@ import ist.palcom.resource.descriptor.ControlInfo;
 import ist.palcom.resource.descriptor.GroupInfo;
 import ist.palcom.resource.descriptor.PRDService;
 import ist.palcom.resource.descriptor.PRDServiceFMDescription;
+import ist.palcom.resource.descriptor.ParamInfo;
 import ist.palcom.resource.descriptor.SynthesizedService;
 
 import java.awt.BorderLayout;
@@ -46,6 +47,7 @@ import javax.swing.tree.TreePath;
 import se.lth.cs.palcom.browsergui.AddCommandDialog;
 import se.lth.cs.palcom.browsergui.AddSynthServiceDialog;
 import se.lth.cs.palcom.browsergui.AssemblyDroptarget;
+import se.lth.cs.palcom.browsergui.TwoStringsDialog;
 import se.lth.cs.palcom.browsergui.views.GraphSynthServiceMenues.RemoveSSMenu;
 import se.lth.cs.palcom.discovery.proxy.Resource;
 import EDU.oswego.cs.dl.util.concurrent.Executor;
@@ -89,7 +91,7 @@ public class GraphSynthServicePanel extends JPanel {
 	}
 
 	public void addService(SynthesizedService ss) {
-		ge.addSynthService(ss);
+		ge.addSynthService(new ServiceObjGUI(ss));
 		displayServices();
 	}
 	
@@ -100,8 +102,8 @@ public class GraphSynthServicePanel extends JPanel {
 
 	public void displayServices() {
 		servicePanel.removeAll();
-		for (SynthesizedService ss : ge.getSynthServices()) {
-			servicePanel.add(new ServiceObjGUI(ss));
+		for (ServiceObjGUI ss : ge.getSynthServices()) {
+			servicePanel.add(ss);
 		}
 		servicePanel.repaint();
 	}
@@ -121,6 +123,8 @@ public class GraphSynthServicePanel extends JPanel {
 		SynthesizedService ss;
 		DragSource dragSource;
 		JTree tree;
+		DefaultTreeModel model;
+		private final TwoStringsDialog twoStringsDialog = new TwoStringsDialog();
 		public ServiceObjGUI(SynthesizedService ss) {
 			this.ss = ss;
 			this.setPreferredSize(new Dimension(100, 100));
@@ -130,7 +134,7 @@ public class GraphSynthServicePanel extends JPanel {
 					BorderFactory.createLineBorder(new Color(109, 134, 173), 1),
 					BorderFactory.createEmptyBorder(2, 2, 2, 2)));
 			// this.setAutoscrolls(true);
-			DefaultTreeModel model = new DefaultTreeModel(
+			model = new DefaultTreeModel(
 					new DefaultMutableTreeNode("NULL"));
 			tree = new JTree(model);
 			model.setRoot(new SynthServiceNode(ss, this));
@@ -220,20 +224,20 @@ public class GraphSynthServicePanel extends JPanel {
 		
 		public void actionPerformed(ActionEvent e) {
 			String cmd = e.getActionCommand();
+			final TreeNode node = (TreeNode) tree.getSelectionPath().getLastPathComponent();
 			if (cmd.equals("removeSS")) {
 				RemoveSSMenu rm = (RemoveSSMenu) ((JMenuItem)e.getSource()).getParent();
 				removeService(rm.ss);
 			} else if(cmd.equals("AddCommand")){
-				final TreeNode node = (TreeNode) tree.getSelectionPath().getLastPathComponent();
 				try {
 					taskExecutor.execute(new Runnable() {
 						public void run() {
 							//String[] vals = twoStringsDialog.getStrings("Name", "Direction", "", "in");
 							String[] vals = AddCommandDialog.getStrings(GraphSynthServicePanel.this);
-							if (node instanceof ServiceDescriptionTreeNode) {
-//								((ServiceDescriptionTreeNode)node).addCommand(vals[0], vals[1]);
-//							} else if (node instanceof GroupTreeNode) {
-//								((GroupTreeNode)node).addCommand(vals[0], vals[1]);
+							if (node instanceof SynthServiceNode) {
+								((SynthServiceNode)node).addCommand(vals[0], vals[1]);
+							} else if (node instanceof GroupTreeNode) {
+								((GroupTreeNode)node).addCommand(vals[0], vals[1]);
 							}
 						}
 					});
@@ -241,50 +245,272 @@ public class GraphSynthServicePanel extends JPanel {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
-				System.out.println("Add command");
+//				System.out.println("Add command");
 			} else if(cmd.equals("AddGroup")){
-				System.out.println("Add group");
+				try {
+					taskExecutor.execute(new Runnable() {
+						public void run() {
+							String[] vals = twoStringsDialog.getStrings("Name", "Help text", "", "");
+							if (node instanceof SynthServiceNode) {
+								((SynthServiceNode)node).addGroup(vals[0], vals[1]);
+							} else if (node instanceof GroupTreeNode) {
+								((GroupTreeNode)node).addGroup(vals[0], vals[1]);
+							}
+						}
+					});
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+//				System.out.println("Add group");
 			} else if(cmd.equals("DeleteSSD")){
-				System.out.println("Delete ss description");
+				try {
+					if (node instanceof SynthServiceNode) {
+					taskExecutor.execute(new Runnable() {
+						public void run() {
+//							System.out.println("deleting service");
+							removeService(((SynthServiceNode)node).ssobj.ss);					
+						}
+					});
+					} else {
+						((DefaultMutableTreeNode) node).removeFromParent();
+						SwingUtilities.invokeLater(new Runnable() {
+							public void run() {
+//								System.out.println("deleting");
+								model.nodeStructureChanged(node);
+//								model.reload(((DefaultMutableTreeNode) node).getParent());
+//								tree.updateUI();
+							}
+						});
+					}
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			} else if(cmd.equals("AddParam")){
+				final CommandTreeNode cmdNode = (CommandTreeNode) tree.getSelectionPath().getLastPathComponent();
+				try {
+					taskExecutor.execute(new Runnable() {
+						public void run() {
+							String[] vals = twoStringsDialog.getStrings("Name", "Type", "", "");
+							cmdNode.addParam(vals[0], vals[1]);
+						}
+					});
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 			}
 
+		}
+		
+		boolean equals(SynthesizedService ss){
+//			System.out.println("checking equals");
+			return this.ss == ss;
 		}
 
 	}
 	
 
-	private class SynthServiceNode extends AssemblyTreeNode<SynthesizedService> {
+	private class SynthServiceNode extends AssemblyTreeNode<PRDServiceFMDescription> {
+		JPopupMenu serviceDescriptionMenu;
+		ServiceObjGUI ssobj;
+		SynthesizedService service;
 		public SynthServiceNode(SynthesizedService service, ServiceObjGUI ssobj) {
 			super("");
-			this.data = service;
-			ServiceDescriptionTreeNode sdtNode = new ServiceDescriptionTreeNode(service.getPRDServiceFMDescription(), ssobj);
-			add(sdtNode);
+			this.data = service.getPRDServiceFMDescription();
+			this.ssobj = ssobj;
+			this.service = service;
+			serviceDescriptionMenu = menues.createServiceDescriptionMenu(ssobj, service);
+//			ServiceDescriptionTreeNode sdtNode = new ServiceDescriptionTreeNode(service.getPRDServiceFMDescription(), ssobj);
+//			add(sdtNode);
 			this.setUserObject(getLabel());
 		}
 
 		@Override
 		public String getLabel() {
 			StringBuilder sb = new StringBuilder();
-			sb.append(data.getPRDServiceFMDescription().getID());
+			sb.append(data.getID());
 			sb.append(" (");
-			if (data.getDistribution() == PRDService.BROADCAST) {
+			if (service.getDistribution() == PRDService.BROADCAST) {
 				sb.append("Broadcast");
-			} else if (data.getDistribution() == PRDService.GROUPCAST) {
+			} else if (service.getDistribution() == PRDService.GROUPCAST) {
 				sb.append("Groupcast");
-			} else if (data.getDistribution() == PRDService.RADIOCAST) {
+			} else if (service.getDistribution() == PRDService.RADIOCAST) {
 				sb.append("Radiocast");
-			} else if (data.getDistribution() == PRDService.UNICAST) {
+			} else if (service.getDistribution() == PRDService.UNICAST) {
 				sb.append("Unicast");
 			}
-			if (data.getReqAuth()) {
+			if (service.getReqAuth()) {
 				sb.append(" (UserID)");
 			}
 			sb.append(")");
 
 			return sb.toString();
 		}
+		@Override
+		public void showContextMenu(int x, int y) {
+			serviceDescriptionMenu.show(ssobj, x, y);
+		}
+		
+		void addCommand(String name, String direction) {
+			CommandInfo ci = new CommandInfo(name, direction);
+			ci.setCommandNumber(data.findHighestCommandNumber() + 1);
+			data.addControlInfo(ci);
+			CommandTreeNode ctn = new CommandTreeNode(ci, ssobj);
+			ctn.setUserObject(ctn.getLabel());
+			add(ctn);
+			SwingUtilities.invokeLater(new Runnable() {
+				public void run() {
+					ssobj.model.nodesWereInserted(
+							SynthServiceNode.this,
+							new int[] { getChildCount() - 1 });
+				}
+			});
+//			System.out.println("Added " + ci);
+			// setUnsaved(true);
+		}
+		
+		public void addGroup(String name, String help) {
+			GroupInfo gi = new GroupInfo(name, help);
+			data.addControlInfo(gi);
+			GroupTreeNode gtn = new GroupTreeNode(gi, ssobj);
+			gtn.setUserObject(gtn.getLabel());
+			add(gtn);
+			SwingUtilities.invokeLater(new Runnable() {
+				public void run() {
+					ssobj.model.nodesWereInserted(SynthServiceNode.this,
+					 new int[] {getChildCount() - 1});
+				}
+			});
+			// setUnsaved(true);
+		}
 	}
+	
+	private class GroupTreeNode extends AssemblyTreeNode<GroupInfo> {
+		ServiceObjGUI ssobj;
+		JPopupMenu serviceDescriptionMenu;
+		public GroupTreeNode(GroupInfo groupInfo, ServiceObjGUI ssobj) {
+			super("");
+			this.data = groupInfo;
+			this.ssobj = ssobj;
+			serviceDescriptionMenu = menues.createServiceDescriptionMenu(ssobj, ssobj.ss);
+			for (int i = 0; i < groupInfo.getNumControlInfo(); ++i) {
+				ControlInfo ci = groupInfo.getControlInfo(i);
+				if (ci instanceof GroupInfo) {
+					add(new GroupTreeNode((GroupInfo) ci, ssobj)); 
+				} else {
+					add(new CommandTreeNode((CommandInfo) ci, ssobj)); 
+				}
+			}
+		}
+		
+		void addCommand(String name, String direction) {
+			CommandInfo ci = new CommandInfo(name, direction);
+			// Find and add command number 
+			ASTNode n = data.getParent();
+			while (n != null) {
+				if (n instanceof PRDServiceFMDescription) {
+					ci.setCommandNumber(((PRDServiceFMDescription)n).findHighestCommandNumber() + 1);
+					break;
+				}
+				n = n.getParent();
+			}
+			data.addControlInfo(ci);
+			CommandTreeNode ctn = new CommandTreeNode(ci, ssobj);
+			ctn.setUserObject(ctn.getLabel());
+			add(ctn); 
+			SwingUtilities.invokeLater(new Runnable() {
+				public void run() {
+					ssobj.model.nodesWereInserted(GroupTreeNode.this, new int[] {getChildCount() - 1});
+				}
+			});
+		}
 
+		public void addGroup(String name, String help) {
+			GroupInfo gi = new GroupInfo(name, help);
+			data.addControlInfo(gi);
+			GroupTreeNode gtn = new GroupTreeNode(gi, ssobj);
+			gtn.setUserObject(gtn.getLabel());
+			add(gtn); 
+			SwingUtilities.invokeLater(new Runnable() {
+				public void run() {
+					ssobj.model.nodesWereInserted(GroupTreeNode.this, new int[] {getChildCount() - 1});
+				}
+			});
+//			setUnsaved(true);
+		}
+
+		@Override
+		public String getLabel() {
+			return data.getID() + "(" + data.getHelp() + ")";
+		}
+		
+		@Override
+		public void showContextMenu(int x, int y) {
+			serviceDescriptionMenu.show(ssobj, x, y);
+		}
+	}
+	
+	private class CommandTreeNode extends AssemblyTreeNode<CommandInfo> {
+		JPopupMenu commandMenu;
+		ServiceObjGUI ssobj;
+		public CommandTreeNode(CommandInfo info, ServiceObjGUI ssobj) {
+			super("");
+			this.data = info;
+			this.ssobj = ssobj;
+			commandMenu = menues.createCommandMenu(ssobj);
+			for (int i = 0; i < info.getNumParamInfo(); ++i) {
+				add(new ParamTreeNode(info.getParamInfo(i), ssobj));
+			}
+		}
+
+
+		@Override
+		public String getLabel() {
+			return data.getID() + " (" + data.getDirection() + ")";
+		}
+
+		@Override
+		public void showContextMenu(int x, int y) {
+			commandMenu.show(ssobj, x, y);
+		}
+
+		public void addParam(String name, String type) {
+			ParamInfo inf = new ParamInfo(name, type); 
+			data.addParamInfo(inf);
+			add(new ParamTreeNode(new ParamInfo(name ,type), ssobj));
+			SwingUtilities.invokeLater(new Runnable() {
+				public void run() {
+					ssobj.model.nodesWereInserted(CommandTreeNode.this, new int[] {getChildCount() - 1});
+				}
+			});
+//			setUnsaved(true);
+		}
+	}
+	
+	private class ParamTreeNode extends AssemblyTreeNode<ParamInfo> {
+		ServiceObjGUI ssobj;
+		JPopupMenu paramMenu;
+		public ParamTreeNode(ParamInfo pi, ServiceObjGUI ssobj) {
+			super("Param");
+			data = pi;
+			this.ssobj = ssobj;
+			paramMenu = menues.createDeviceMenu(ssobj);
+			setUserObject(getLabel());
+		}
+
+		@Override
+		public String getLabel() {
+			return data.getID() + " (" + data.getType() + ")";
+		}
+		
+		@Override
+		public void showContextMenu(int x, int y) {
+			paramMenu.show(ssobj, x, y);
+		}
+		
+	}
 	public abstract class AssemblyTreeNode<Type extends ASTNode> extends
 			DefaultMutableTreeNode implements AssemblyDroptarget {
 		private static final long serialVersionUID = -177757859868743964L;
@@ -320,63 +546,5 @@ public class GraphSynthServicePanel extends JPanel {
 			// setUnsaved(true);
 		}
 	}
-
-
-	private class ServiceDescriptionTreeNode extends
-			AssemblyTreeNode<PRDServiceFMDescription> {
-		JPopupMenu serviceDescrptionMenu;
-		ServiceObjGUI ssobj;
-		public ServiceDescriptionTreeNode(PRDServiceFMDescription description, ServiceObjGUI ssobj) {
-			super("ServiceDescription");
-			this.ssobj = ssobj;
-			serviceDescrptionMenu = menues.createServiceDescriptionMenu(ssobj);
-			this.data = description;
-			
-			for (int i = 0; i < data.getNumControlInfo(); ++i) {
-				ControlInfo ci = data.getControlInfo(i);
-				if (ci instanceof CommandInfo) {
-//					add(new CommandTreeNode((CommandInfo) ci));
-				} else if (ci instanceof GroupInfo) {
-//					add(new GroupTreeNode((GroupInfo) ci));
-				}
-			}
-		}
-
-		@Override
-		public String getLabel() {
-			return "ServiceDescription";
-		}
-
-		@Override
-		public void showContextMenu(int x, int y) {
-			serviceDescrptionMenu.show(ssobj, x, y);
-		}
-//
-//		void addCommand(String name, String direction) {
-//			CommandInfo ci = new CommandInfo(name, direction);
-//			ci.setCommandNumber(data.findHighestCommandNumber() + 1);
-//			data.addControlInfo(ci);
-//			add(new CommandTreeNode(ci));
-//			SwingUtilities.invokeLater(new Runnable() {
-//				public void run() {
-//					 model.nodesWereInserted(ServiceDescriptionTreeNode.this,
-//					 new int[] {getChildCount() - 1});
-//				}
-//			});
-//			// setUnsaved(true);
-//		}
-//
-//		public void addGroup(String name, String help) {
-//			GroupInfo gi = new GroupInfo(name, help);
-//			data.addControlInfo(gi);
-//			// add(new GroupTreeNode(gi));
-//			SwingUtilities.invokeLater(new Runnable() {
-//				public void run() {
-//					// model.nodesWereInserted(ServiceDescriptionTreeNode.this,
-//					// new int[] {getChildCount() - 1});
-//				}
-//			});
-//			// setUnsaved(true);
-//		}
-	}
+	
 }
