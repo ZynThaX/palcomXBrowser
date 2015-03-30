@@ -17,12 +17,15 @@ import se.lth.cs.palcom.discovery.proxy.Resource;
 
 
 public class AssemblyGraphTransferHandler extends TransferHandler{
-	
+	public static DataFlavor FLAVOR_RESOURCE = new DataFlavor(Resource.class, "resource");
+	public static DataFlavor FLAVOR_SS = new DataFlavor(SynthesizedService.class, "synthesisedService");
 	private GraphEditor graphEditor;
+//	private DataFlavor flavors[];
 	
 	public AssemblyGraphTransferHandler(GraphEditor graphEditor){
 		super();
 		this.graphEditor = graphEditor;
+//		flavors = new DataFlavor[] {FLAVOR_RESOURCE, FLAVOR_SS};
 	}
 
 	private static final long serialVersionUID = 1L;
@@ -30,13 +33,21 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 	@Override
     public boolean importData(JComponent comp, Transferable t) {
 		try {
-			Object data = t.getTransferData(new DataFlavor(Resource.class, "resource"));
-			if (!(data instanceof DeviceProxy)) {
+			Object data;
+	    	Object data2;
+			data = t.getTransferData(FLAVOR_RESOURCE);
+			data2 = t.getTransferData(FLAVOR_SS);
+			if (!((data instanceof DeviceProxy)
+					|| data2 instanceof SynthesizedService)) {
 				return false;
 			}
-			
-			graphEditor.importDevice((int)comp.getMousePosition().getY(),(DeviceProxy)data);
-			
+			if (data instanceof DeviceProxy){
+				graphEditor.importDevice((int)comp.getMousePosition().getY(),(DeviceProxy)data);
+			} else if(data2 instanceof SynthesizedService){
+//				graphEditor.importDevice((int)comp.getMousePosition().getY(),(SynthesizedService)data);
+				System.out.println("Dropped a synthesised service");
+			}
+
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -47,21 +58,20 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
     @Override
     public boolean canImport(TransferSupport support) {
     	Object data;
+    	Object data2;
 		try {
-//			DataFlavor[] flavors = {new DataFlavor(Resource.class, "resource"), new DataFlavor(SynthesizedService.class, "synthService")};
-			data = support.getTransferable().getTransferData(new DataFlavor(Resource.class, "resource"));
-//			System.out.println(data.getClass());
-//			return false;
-			if (!(data instanceof DeviceProxy)) { 
-				return false;
-			}
-            return true;
+			data = support.getTransferable().getTransferData(FLAVOR_RESOURCE);
+			data2 = support.getTransferable().getTransferData(FLAVOR_SS);
+			if ((data instanceof DeviceProxy) || data2 instanceof SynthesizedService) { 
+				return true;
+			} 
+            return false;
 		} catch (UnsupportedFlavorException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		return true;
-		
     }
+ 
 }

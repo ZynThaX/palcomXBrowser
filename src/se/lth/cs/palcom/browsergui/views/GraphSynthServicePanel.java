@@ -14,8 +14,10 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DragGestureEvent;
 import java.awt.dnd.DragGestureListener;
@@ -28,6 +30,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.io.IOException;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -214,9 +217,28 @@ public class GraphSynthServicePanel extends JPanel {
 		public void dragDropEnd(DragSourceDropEvent dsde) {
 			this.setBorder(BorderFactory.createLineBorder(new Color(109, 134, 173)));
 		}
+		
 		public void dragGestureRecognized(DragGestureEvent dge) {
-			Transferable transferable = new StringSelection("hellow");
+//			Transferable transferable = new StringSelection("hellow");
 			this.setBorder(BorderFactory.createDashedBorder(Color.GREEN));
+			
+			Transferable transferable = new Transferable() {
+				public DataFlavor[] getTransferDataFlavors() {
+					return new DataFlavor[] { new DataFlavor(SynthesizedService.class, "synthesisedService") };
+				}
+
+				public boolean isDataFlavorSupported(DataFlavor flavor) {
+					if (!isDataFlavorSupported(flavor)) {
+						return false;
+					}
+					return true;
+				}
+
+				public Object getTransferData(DataFlavor flavor)
+						throws UnsupportedFlavorException, IOException {
+					return ss;
+				}
+			};
 			dragSource.startDrag(dge, DragSource.DefaultMoveNoDrop, transferable,
 					this);
 		}
