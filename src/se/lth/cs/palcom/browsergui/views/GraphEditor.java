@@ -7,9 +7,12 @@ import ist.palcom.resource.descriptor.ASTNode;
 import ist.palcom.resource.descriptor.CommandInfo;
 import ist.palcom.resource.descriptor.ControlInfo;
 import ist.palcom.resource.descriptor.List;
+import ist.palcom.resource.descriptor.Opt;
 import ist.palcom.resource.descriptor.PRDServiceFMDescription;
 import ist.palcom.resource.descriptor.ParamInfo;
 import ist.palcom.resource.descriptor.SynthesizedService;
+import ist.palcom.resource.descriptor.LocalSID;
+import ist.palcom.resource.descriptor.GroupInfo;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -43,8 +46,6 @@ import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Command;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.NodeType;
-import se.lth.cs.palcom.browsergui.views.GraphDeviceView.AddServiceMenu;
-import se.lth.cs.palcom.browsergui.views.GraphDeviceView.RemoveServiceMenu;
 import se.lth.cs.palcom.browsergui.views.GraphSynthServicePanel.ServiceObjGUI;
 import se.lth.cs.palcom.discovery.DeviceProxy;
 import se.lth.cs.palcom.discovery.DiscoveryManager;
@@ -67,7 +68,6 @@ import com.mxgraph.util.mxPoint;
 import com.mxgraph.view.mxEdgeStyle;
 import com.mxgraph.view.mxGraph;
 import com.mxgraph.view.mxMultiplicity;
-import com.mxgraph.view.mxStylesheet;
 
 public class GraphEditor extends JPanel {
 
@@ -474,6 +474,74 @@ public class GraphEditor extends JPanel {
 
 		addGraphDevice(cell.getId(), gd);
 		return gd;
+	}
+	
+	public void importDevice(int y, SynthesizedService data) throws ResourceException {
+		
+		mxCell cell = null;
+		
+		for(int i=0;i<data.getNumChild();i++){
+			Object child = data.getChild(i);
+			if(child instanceof Opt){
+				// Vad är detta???
+
+			}else if(child instanceof PRDServiceFMDescription){
+				PRDServiceFMDescription p = (PRDServiceFMDescription) child;
+				cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + p.getID() + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");
+				cell.setConnectable(false);
+				mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
+				add.setConnectable(false);
+				
+				graph.refresh();
+				GraphDevice gd = new GraphDevice(cell, add);
+
+				addGraphDevice(cell.getId(), gd);
+				Node parent = gd.addNode(null, NodeType.SERVICE, "All commands");
+				
+				for(int j=0;j<p.getNumChild();j++){
+					Object o2 = p.getChild(j);
+					if(o2 instanceof List){
+						recrusiveGetSynthServices(parent,(List) o2);
+					}else if(o2 instanceof LocalSID){
+						// Vad är detta???
+					}
+				}
+			}else if(child instanceof List){
+				// Vad finns i denna listan???
+			}
+		}
+	}
+	
+	private void recrusiveGetSynthServices(Node graphDeviceNode, ASTNode node){
+		if(node instanceof GroupInfo){
+			GroupInfo gi = (GroupInfo) node;
+			for(int i=0;i<gi.getNumChild();i++){
+				recrusiveGetSynthServices(graphDeviceNode, gi.getChild(i));
+			}
+		}else if(node instanceof List){
+			List gi = (List) node;
+			for(int i=0;i<gi.getNumChild();i++){
+				recrusiveGetSynthServices(graphDeviceNode, gi.getChild(i));
+			}
+		}else if(node instanceof CommandInfo){
+			CommandInfo ci = (CommandInfo) node;
+			String type = "ping";
+			typeloop:
+			for(int j = 0; j < ci.getNumChild();j++){
+				ASTNode astn = ci.getChild(j);
+				if(astn instanceof List){
+					List list = (List)ci.getChild(j);
+					for(int k = 0;k<list.getNumChild();k++){
+						ParamInfo pi = (ParamInfo) list.getChild(k);
+						type = pi.getType();
+						break typeloop;
+						//TODO, finns det fall då det existerar flera types till en funktion?
+					}
+				}
+			}
+			graphDeviceNode.addCommand(ci.getDirection().equals("in"), ci.getID(), type);
+
+		}
 	}
 
 	private void recrusiveGetServices(Node parent, GraphDevice gd, PalcomServiceListPart psp) throws ResourceException {
