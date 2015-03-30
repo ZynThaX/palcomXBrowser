@@ -14,6 +14,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridLayout;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
@@ -33,6 +35,7 @@ import java.awt.event.MouseListener;
 import java.io.IOException;
 
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
@@ -120,45 +123,91 @@ public class GraphSynthServicePanel extends JPanel {
 	}
 
 	
+	private class ServiceTree extends JTree implements DragGestureListener, DragSourceListener{
+		DragSource dragSource;
+		ServiceObjGUI sobj;
+		public ServiceTree(DefaultTreeModel model, ServiceObjGUI sobj) {
+			super(model);
+			this.sobj = sobj;
+			dragSource = new DragSource();
+			dragSource.createDefaultDragGestureRecognizer(this,
+					DnDConstants.ACTION_COPY_OR_MOVE, this);
+		}
 
-	public class ServiceObjGUI extends JPanel implements DragGestureListener,
-			DragSourceListener, ActionListener {
+		public void dragEnter(DragSourceDragEvent dsde) {
+			dsde.getDragSourceContext().setCursor(DragSource.DefaultCopyDrop);
+		}
+		public void dragOver(DragSourceDragEvent dsde) {}
+		public void dropActionChanged(DragSourceDragEvent dsde) {}
+		public void dragExit(DragSourceEvent dse) {
+			sobj.setBorder(BorderFactory.createLineBorder(new Color(109, 134, 173), 2));
+			dse.getDragSourceContext().setCursor(DragSource.DefaultMoveNoDrop);
+		}
+		public void dragDropEnd(DragSourceDropEvent dsde) {
+			sobj.setBorder(BorderFactory.createLineBorder(new Color(109, 134, 173), 2));
+		}
+		
+		public void dragGestureRecognized(DragGestureEvent dge) {
+			sobj.setBorder(BorderFactory.createCompoundBorder(
+					BorderFactory.createDashedBorder(Color.green),
+					BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+			
+			Transferable transferable = new Transferable() {
+				public DataFlavor[] getTransferDataFlavors() {
+					return new DataFlavor[] { new DataFlavor(SynthesizedService.class, "synthesisedService") };
+				}
+
+				public boolean isDataFlavorSupported(DataFlavor flavor) {
+					if (!isDataFlavorSupported(flavor)) {
+						return false;
+					}
+					return true;
+				}
+
+				public Object getTransferData(DataFlavor flavor)
+						throws UnsupportedFlavorException, IOException {
+					return sobj.ss;
+				}
+			};
+			dragSource.startDrag(dge, DragSource.DefaultMoveNoDrop, transferable,
+					this);
+		}
+		
+	}
+	public class ServiceObjGUI extends JPanel implements ActionListener {
 		SynthesizedService ss;
 		DragSource dragSource;
-		JTree tree;
+		ServiceTree tree;
 		DefaultTreeModel model;
 		private final TwoStringsDialog twoStringsDialog = new TwoStringsDialog();
 		public ServiceObjGUI(SynthesizedService ss) {
 			this.ss = ss;
-			this.setPreferredSize(new Dimension(100, 100));
+			this.setPreferredSize(new Dimension(130, 100));
+			this.setLayout(new GridLayout(0, 1));
 			Color deviceBlue = new Color(196, 219, 255);
 			this.setBackground(deviceBlue);
-			this.setBorder(BorderFactory.createCompoundBorder(
-					BorderFactory.createLineBorder(new Color(109, 134, 173), 1),
-					BorderFactory.createEmptyBorder(2, 2, 2, 2)));
+			this.setBorder(BorderFactory.createLineBorder(new Color(109, 134, 173), 2));
 			// this.setAutoscrolls(true);
 			model = new DefaultTreeModel(
 					new DefaultMutableTreeNode("NULL"));
-			tree = new JTree(model);
+			tree = new ServiceTree(model, this);
 			model.setRoot(new SynthServiceNode(ss, this));
 			DefaultTreeCellRenderer renderer = (DefaultTreeCellRenderer) (tree
 					.getCellRenderer());
 			renderer.setBackgroundNonSelectionColor(deviceBlue);
 			renderer.setBackgroundSelectionColor(deviceBlue);
-			// renderer.setBorderSelectionColor(Color.GREEN);
 			renderer.setTextNonSelectionColor(new Color(69, 60, 43));
 			renderer.setTextSelectionColor(new Color(69, 60, 43));
-			// JPanel p = new JPanel();
-			// p.setBackground(new Color(196, 219, 255));
-			// p.setPreferredSize(new Dimension(100, 100));
-			// p.add(t);
 			tree.setBackground(new Color(196, 219, 255));
-			tree.setScrollsOnExpand(false);
+//			tree.setScrollsOnExpand(true);
 			tree.collapseRow(0);
-			dragSource = new DragSource();
-			dragSource.createDefaultDragGestureRecognizer(this,
-					DnDConstants.ACTION_COPY_OR_MOVE, this);
-			add(tree);
+//			dragSource = new DragSource();
+//			dragSource.createDefaultDragGestureRecognizer(tree,
+//					DnDConstants.ACTION_COPY_OR_MOVE, tree);
+			JScrollPane scroll = new JScrollPane(tree);
+			scroll.setBorder(null);
+//			scroll.add(tree);
+			add(scroll);
 			
 			
 			tree.addMouseListener(new MouseListener() {
@@ -186,7 +235,6 @@ public class GraphSynthServicePanel extends JPanel {
 			});
 			
 			
-			
 		}
 		
 		private void doPopup(MouseEvent me) {
@@ -205,44 +253,49 @@ public class GraphSynthServicePanel extends JPanel {
 
 		
 		
-		public void dragEnter(DragSourceDragEvent dsde) {
-			dsde.getDragSourceContext().setCursor(DragSource.DefaultCopyDrop);
-		}
-		public void dragOver(DragSourceDragEvent dsde) {}
-		public void dropActionChanged(DragSourceDragEvent dsde) {}
-		public void dragExit(DragSourceEvent dse) {
-			this.setBorder(BorderFactory.createLineBorder(new Color(109, 134, 173)));
-			dse.getDragSourceContext().setCursor(DragSource.DefaultMoveNoDrop);
-		}
-		public void dragDropEnd(DragSourceDropEvent dsde) {
-			this.setBorder(BorderFactory.createLineBorder(new Color(109, 134, 173)));
-		}
-		
-		public void dragGestureRecognized(DragGestureEvent dge) {
-//			Transferable transferable = new StringSelection("hellow");
-			this.setBorder(BorderFactory.createDashedBorder(Color.GREEN));
-			
-			Transferable transferable = new Transferable() {
-				public DataFlavor[] getTransferDataFlavors() {
-					return new DataFlavor[] { new DataFlavor(SynthesizedService.class, "synthesisedService") };
-				}
-
-				public boolean isDataFlavorSupported(DataFlavor flavor) {
-					if (!isDataFlavorSupported(flavor)) {
-						return false;
-					}
-					return true;
-				}
-
-				public Object getTransferData(DataFlavor flavor)
-						throws UnsupportedFlavorException, IOException {
-					return ss;
-				}
-			};
-			dragSource.startDrag(dge, DragSource.DefaultMoveNoDrop, transferable,
-					this);
-		}
-		
+//		public void dragEnter(DragSourceDragEvent dsde) {
+//			dsde.getDragSourceContext().setCursor(DragSource.DefaultCopyDrop);
+//		}
+//		public void dragOver(DragSourceDragEvent dsde) {}
+//		public void dropActionChanged(DragSourceDragEvent dsde) {}
+//		public void dragExit(DragSourceEvent dse) {
+//			this.setBorder(BorderFactory.createCompoundBorder(
+//					BorderFactory.createLineBorder(new Color(109, 134, 173), 2),
+//					BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+//			dse.getDragSourceContext().setCursor(DragSource.DefaultMoveNoDrop);
+//		}
+//		public void dragDropEnd(DragSourceDropEvent dsde) {
+//			this.setBorder(BorderFactory.createCompoundBorder(
+//					BorderFactory.createLineBorder(new Color(109, 134, 173), 2),
+//					BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+//		}
+//		
+//		public void dragGestureRecognized(DragGestureEvent dge) {
+//			this.setBorder(BorderFactory.createCompoundBorder(
+//					BorderFactory.createDashedBorder(Color.green),
+//					BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+//			
+//			Transferable transferable = new Transferable() {
+//				public DataFlavor[] getTransferDataFlavors() {
+//					return new DataFlavor[] { new DataFlavor(SynthesizedService.class, "synthesisedService") };
+//				}
+//
+//				public boolean isDataFlavorSupported(DataFlavor flavor) {
+//					if (!isDataFlavorSupported(flavor)) {
+//						return false;
+//					}
+//					return true;
+//				}
+//
+//				public Object getTransferData(DataFlavor flavor)
+//						throws UnsupportedFlavorException, IOException {
+//					return ss;
+//				}
+//			};
+//			dragSource.startDrag(dge, DragSource.DefaultMoveNoDrop, transferable,
+//					this);
+//		}
+//		
 		
 		public void actionPerformed(ActionEvent e) {
 			String cmd = e.getActionCommand();
