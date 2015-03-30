@@ -44,8 +44,10 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 			if (data instanceof DeviceProxy){
 				graphEditor.importDevice((int)comp.getMousePosition().getY(),(DeviceProxy)data);
 			} else if(data2 instanceof SynthesizedService){
-//				graphEditor.importDevice((int)comp.getMousePosition().getY(),(SynthesizedService)data);
-				System.out.println("Dropped a synthesised service");
+				graphEditor.importDevice((int)comp.getMousePosition().getY(),(SynthesizedService)data);
+//				System.out.println("Dropped a synthesised service");
+//				System.out.println(data2.getClass());
+				
 			}
 
 			return true;
