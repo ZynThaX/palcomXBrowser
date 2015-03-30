@@ -1,6 +1,8 @@
 package se.lth.cs.palcom.browsergui.dnd;
 
 
+import ist.palcom.resource.descriptor.SynthesizedService;
+
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
@@ -46,7 +48,10 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
     public boolean canImport(TransferSupport support) {
     	Object data;
 		try {
+//			DataFlavor[] flavors = {new DataFlavor(Resource.class, "resource"), new DataFlavor(SynthesizedService.class, "synthService")};
 			data = support.getTransferable().getTransferData(new DataFlavor(Resource.class, "resource"));
+//			System.out.println(data.getClass());
+//			return false;
 			if (!(data instanceof DeviceProxy)) { 
 				return false;
 			}
@@ -56,7 +61,7 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return false;
+		return true;
 		
     }
 }
