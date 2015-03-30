@@ -324,6 +324,7 @@ public class GraphEditor extends JPanel {
 				String id = factory.getAttributeValue("", "id");
 				if(factory.getName().equals("Identifier") && id != null){					
 					xmlGoTo(factory,"DID");
+					
 					for(int i = 0;i<networkDevices.size();i++){
 						Object device = networkDevices.get(i);
 						if(device instanceof DeviceProxy){
