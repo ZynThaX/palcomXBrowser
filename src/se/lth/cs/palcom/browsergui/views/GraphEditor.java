@@ -456,81 +456,58 @@ public class GraphEditor extends JPanel {
 	public ArrayList<ServiceObjGUI> getSynthServices(){
 		return ssList;
 	}
+	
 	public GraphDevice importDevice(int y, DeviceProxy data) throws ResourceException {
-		DeviceProxy res = (DeviceProxy) data;
-		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + res.getName() + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");
-		cell.setConnectable(false);
-		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
-		add.setConnectable(false);
-		
-		graph.refresh();
-		GraphDevice gd = new GraphDevice(cell, add);
+		GraphDevice gd = createGraphDevice(data.getName(),y);
+	
+		PalcomServiceList services = data.getServiceList();
 
-		PalcomServiceList services = res.getServiceList();
-		
 		for (int i = 0; i < services.getNumService(); i++) {
 			recrusiveGetServices(null, gd, services.getService(i));
 		}
 
+		return gd;
+	}
+	
+	public GraphDevice importDevice(int y, SynthesizedService data) throws ResourceException {
+		PRDServiceFMDescription prds = data.getPRDServiceFMDescription();
+		
+		GraphDevice gd = createGraphDevice(prds.getID(),y);
+		Node parent = gd.addNode(null, NodeType.SERVICE, "All commands");
+		
+		parseCommands(parent, prds);
+		return gd;
+	}
+
+	private GraphDevice createGraphDevice(String name, int y){
+		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");
+		cell.setConnectable(false);
+		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
+		add.setConnectable(false);
+		graph.refresh();
+		GraphDevice gd = new GraphDevice(cell, add);
 		addGraphDevice(cell.getId(), gd);
 		return gd;
 	}
 	
-	public void importDevice(int y, SynthesizedService data) throws ResourceException {
-		
-		mxCell cell = null;
-		
-		for(int i=0;i<data.getNumChild();i++){
-			Object child = data.getChild(i);
-			if(child instanceof Opt){
-				// Vad är detta???
-
-			}else if(child instanceof PRDServiceFMDescription){
-				PRDServiceFMDescription p = (PRDServiceFMDescription) child;
-				cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + p.getID() + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");
-				cell.setConnectable(false);
-				mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
-				add.setConnectable(false);
-				
-				graph.refresh();
-				GraphDevice gd = new GraphDevice(cell, add);
-
-				addGraphDevice(cell.getId(), gd);
-				Node parent = gd.addNode(null, NodeType.SERVICE, "All commands");
-				
-				for(int j=0;j<p.getNumChild();j++){
-					Object o2 = p.getChild(j);
-					if(o2 instanceof List){
-						recrusiveGetSynthServices(parent,(List) o2);
-					}else if(o2 instanceof LocalSID){
-						// Vad är detta???
-					}
-				}
-			}else if(child instanceof List){
-				// Vad finns i denna listan???
-			}
+	private void parseCommands(Node parent, PRDServiceFMDescription prds){
+		for(int i =0;i<prds.getNumControlInfo();i++){
+			recursiveGetCommands(parent, prds.getControlInfo(i));
 		}
 	}
 	
-	private void recrusiveGetSynthServices(Node graphDeviceNode, ASTNode node){
-		if(node instanceof GroupInfo){
-			GroupInfo gi = (GroupInfo) node;
-			for(int i=0;i<gi.getNumChild();i++){
-				recrusiveGetSynthServices(graphDeviceNode, gi.getChild(i));
-			}
-		}else if(node instanceof List){
-			List gi = (List) node;
-			for(int i=0;i<gi.getNumChild();i++){
-				recrusiveGetSynthServices(graphDeviceNode, gi.getChild(i));
-			}
-		}else if(node instanceof CommandInfo){
-			CommandInfo ci = (CommandInfo) node;
+	private void recursiveGetCommands(Node parent, ControlInfo ci){
+		if(ci instanceof CommandInfo){
+			CommandInfo comI = (CommandInfo) ci;
+			String name = comI.getID();
 			String type = "ping";
+			boolean isIn = comI.getDirection().toLowerCase().equals("in");
+			
 			typeloop:
-			for(int j = 0; j < ci.getNumChild();j++){
-				ASTNode astn = ci.getChild(j);
+			for(int j = 0; j < comI.getNumChild();j++){
+				ASTNode astn = comI.getChild(j);
 				if(astn instanceof List){
-					List list = (List)ci.getChild(j);
+					List list = (List)comI.getChild(j);
 					for(int k = 0;k<list.getNumChild();k++){
 						ParamInfo pi = (ParamInfo) list.getChild(k);
 						type = pi.getType();
@@ -539,55 +516,32 @@ public class GraphEditor extends JPanel {
 					}
 				}
 			}
-			graphDeviceNode.addCommand(ci.getDirection().equals("in"), ci.getID(), type);
-
+			parent.addCommand(isIn, name, type);
+		}else if(ci instanceof GroupInfo){
+			GroupInfo gi = (GroupInfo) ci;
+			for(int i=0;i<gi.getNumControlInfo();i++){
+				recursiveGetCommands(parent, gi.getControlInfo(i));
+			}
 		}
 	}
-
+	
 	private void recrusiveGetServices(Node parent, GraphDevice gd, PalcomServiceListPart psp) throws ResourceException {
 		if (psp instanceof ServiceProxy) {
 			Node node = gd.addNode(parent, NodeType.SERVICE, psp.getName());
 
 			ServiceProxy sp = (ServiceProxy) psp;
-			
 			PalcomServiceDescription psd = sp.getDescription();
-			
 			if(psd instanceof PalcomControlServiceDescription){
 				PalcomControlServiceDescription pcsd = (PalcomControlServiceDescription) psd;
 				PRDServiceFMDescription psfmd = pcsd.getPRDServiceFMDescription();
-				if(psfmd != null){
-					for(int i =0;i<psfmd.getNumControlInfo();i++){
-						ControlInfo ctrlInfo = psfmd.getControlInfo(i);
-						if(ctrlInfo instanceof CommandInfo){
-							CommandInfo comI = (CommandInfo) ctrlInfo;
-							String name = comI.getID();
-							String type = "ping";
-							boolean isIn = comI.getDirection().toLowerCase().equals("in");
-							
-							typeloop:
-							for(int j = 0; j < comI.getNumChild();j++){
-								ASTNode astn = comI.getChild(j);
-								if(astn instanceof List){
-									List list = (List)comI.getChild(j);
-									for(int k = 0;k<list.getNumChild();k++){
-										ParamInfo pi = (ParamInfo) list.getChild(k);
-										type = pi.getType();
-										break typeloop;
-										//TODO, finns det fall då det existerar flera types till en funktion?
-									}
-								}
-							}
-							node.addCommand(isIn, name, type);
-						}
-					}
-				}
+				parseCommands(node, psfmd);
 			}
-				
 		} else if (psp instanceof ServiceListProxy) {
 			ServiceListProxy slp = (ServiceListProxy) psp;
 			Node newParent = gd.addNode(parent, NodeType.SERVICELIST, slp.getName());
 			for (int i = 0; i < slp.getNumService(); i++) {
 				recrusiveGetServices(newParent, gd, slp.getService(i));
+				
 			}
 		}
 	}
