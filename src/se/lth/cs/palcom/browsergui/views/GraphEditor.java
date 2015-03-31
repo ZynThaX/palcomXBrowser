@@ -75,7 +75,7 @@ public class GraphEditor extends JPanel {
 	private HashSet<DeviceProxy> devices;
 	private ArrayList<ServiceObjGUI> ssList;
 	private String assemblyData;
-	private mxGraph graph;
+	private AwesomemxGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
 	private GraphDeviceView gDV;
 	private JPanel southPanel;
@@ -84,7 +84,8 @@ public class GraphEditor extends JPanel {
 
 	public static int PORT_DIAMETER = 20;
 	public static int PORT_RADIUS = PORT_DIAMETER / 2;
-
+	public final static String SYNTHESISED_SERVICE_NAME = "Synthesised service";
+	
 	public Document xmlDocument;
 	public TreeMap<String,String> usedColors;
 	public ArrayList<String> availableColors;
@@ -230,7 +231,9 @@ public class GraphEditor extends JPanel {
 	}
 
 	public void addVertex(String id, String name) {
-		GraphDevice gd = graphDevices.get(id);
+		addVertex(graphDevices.get(id), name);
+	}
+	public void addVertex(GraphDevice gd, String name) {
 		Node n = gd.addService(name);
 		
 		mxCell nodeCell = (mxCell) graph.insertVertex(gd.cell, null, name, 0, 0, 150, n.getHeight());
@@ -247,8 +250,6 @@ public class GraphEditor extends JPanel {
 	
 	public void removeVertex(String parentId, String cellId){
 		GraphDevice gd = graphDevices.get(parentId);
-//		gd.removeService(cellId);
-//		graph.removece
 		mxCell removedCell = gd.removeService(cellId);
 		graph.removeCells(new Object[]{removedCell});
 		
@@ -297,140 +298,8 @@ public class GraphEditor extends JPanel {
 
 	public void setGraph(String assemblyData) {
 		this.assemblyData = assemblyData;
-		updateGraphWithData();
-	}
-
-	private void updateGraphWithData() {
-		//se OldschoolAssemblyLoader
+		graph.updateGraphWithData(discoveryManager.getNetwork(), assemblyData, this);
 		
-		XmlPullParser factory = new KXmlParser();
-		int topPos = 10;
-		TreeMap<String, GraphDevice> devices = new TreeMap<String, GraphDevice>();
-		TreeMap<GraphDevice, ArrayList<String>> servicesToAdd = new TreeMap<GraphDevice, ArrayList<String>>();
-		PalcomNetwork pcn = discoveryManager.getNetwork();
-		se.lth.cs.palcom.common.collections.List networkDevices = pcn.getDevices();
-		
-		
-		try {
-			byte[] xmlBytes = assemblyData.getBytes("UTF8");
-			
-			factory.setInput(new InputStreamReader(new ByteArrayInputStream(xmlBytes, 0, xmlBytes.length)));
-			factory.nextTag();
-			
-			xmlGoTo(factory,"DeviceDeclList");
-			factory.nextTag();
-			
-			while(!factory.getName().equals("DeviceDeclList")){
-				String id = factory.getAttributeValue("", "id");
-				if(factory.getName().equals("Identifier") && id != null){					
-					xmlGoTo(factory,"DID");
-					
-					for(int i = 0;i<networkDevices.size();i++){
-						Object device = networkDevices.get(i);
-						if(device instanceof DeviceProxy){
-							DeviceProxy devicep = (DeviceProxy) device;
-							if(devicep.getDeviceID().toString().equals(factory.getAttributeValue("", "id"))){
-								GraphDevice gd = importDevice(topPos, devicep);	
-								devices.put(id, gd);
-							}
-						}
-					}					
-					topPos+=100;
-				}				
-				factory.nextTag();
-			}
-			
-			xmlGoTo(factory,"ServiceDeclList");
-			factory.nextTag();
-			
-			String serviceId;
-			String[] names = new String[2];//Fullösning, fixa bättre!
-			
-			while(!factory.getName().equals("ServiceDeclList")){
-				if(factory.getName().equals("ServiceDecl")){
-					xmlGoTo(factory,"Identifier");
-					serviceId = factory.getAttributeValue("", "id");
-					
-					xmlGoTo(factory,"SingleServiceDecl");
-					xmlGoTo(factory,"Identifier");
-					names[0] = factory.getAttributeValue("", "id");//Service name
-					
-					xmlGoTo(factory,"DeviceUse");
-					xmlGoTo(factory,"Identifier");
-					names[1] = factory.getAttributeValue("", "id");//device name
-					
-					GraphDevice gd = devices.get(names[1]);
-					
-					if(servicesToAdd.containsKey(gd)){
-						servicesToAdd.get(gd).add(names[0]);
-					}else{
-						ArrayList<String> nodes = new ArrayList<String>();
-						nodes.add(names[0]);
-						servicesToAdd.put(gd, nodes);
-					}
-					
-					xmlGoTo(factory,"ServiceDecl");
-				}
-				factory.nextTag();
-			}
-			
-			xmlGoTo(factory,"EventHandlerScript");
-			xmlGoTo(factory,"EventHandlerList");
-			factory.nextTag();
-			
-			String commandName;
-			String direction;
-			String type = "ping";
-			
-			while(!factory.getName().equals("EventHandlerList")){
-				if(factory.getName().equals("EventHandlerClause")){
-					// TODO, detta för att avgöra var anslutningarna e gjorda
-					
-					xmlGoTo(factory,"CommandEvent");
-					commandName = factory.getAttributeValue("", "commandName");
-					
-					xmlGoTo(factory,"ServiceUse");
-					xmlGoTo(factory,"Identifier");
-					serviceId = factory.getAttributeValue("", "id");
-					
-					xmlGoTo(factory,"CmdI");
-					direction = factory.getAttributeValue("", "direction");
-					factory.nextTag();
-					if(factory.getName().equals("PI")){
-						type = factory.getAttributeValue("", "type");
-					}
-					
-//					Node serviceNode = serviceNodes.get(serviceId);
-//					
-//					serviceNode.addCommand(direction.toLowerCase().equals("in"), commandName, type);
-					
-					xmlGoTo(factory,"EventHandlerClause");
-				}
-				factory.nextTag();
-			}
-
-			for(GraphDevice gd:servicesToAdd.keySet()){
-				ArrayList<String> nodes = servicesToAdd.get(gd);
-				for(String nodeName:nodes){
-					addVertex(gd.getId(), nodeName);
-				}
-			}
-			
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		} catch (XmlPullParserException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ResourceException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void xmlGoTo(XmlPullParser factory, String tagName) throws XmlPullParserException, IOException{
-		while(!factory.getName().equals(tagName)){
-			factory.nextTag();
-		}
 	}
 
 	public void addGraphDevice(String key, GraphDevice gd) {
@@ -473,9 +342,11 @@ public class GraphEditor extends JPanel {
 		PRDServiceFMDescription prds = data.getPRDServiceFMDescription();
 		
 		GraphDevice gd = createGraphDevice(prds.getID(),y);
-		Node parent = gd.addNode(null, NodeType.SERVICE, "All commands");
+		Node parent = gd.addNode(null, NodeType.SERVICE, prds.getID());
 		
 		parseCommands(parent, prds);
+		addVertex(gd, prds.getID());
+		
 		return gd;
 	}
 
