@@ -16,12 +16,14 @@ public class GraphDevice implements Comparable {
 	int height;
 	mxCell cell;
 	private mxCell add;
-
+	public boolean disconnected;
+	
 	private ArrayList<mxCell> createdCells;
 
-	public GraphDevice(mxCell cell, mxCell add){
+	public GraphDevice(mxCell cell, mxCell add, boolean disconnected){
 		this.cell = cell;
 		this.add = add;
+		this.disconnected = true;
 		createdCells = new ArrayList<mxCell>();
 		height = DEFAULT_HEIGHT;
 		root = new Node(NodeType.SERVICELIST, "root");
@@ -85,6 +87,28 @@ public class GraphDevice implements Comparable {
 		parent.children.add(n);
 		return n;
 	}
+	public Node findOrAddNode(String name){
+		Node node = recFindNode(root, name);
+		if(node == null){
+			node = new Node(NodeType.SERVICE, name);
+			root.children.add(node);
+		}
+		return node;
+	}
+	private Node recFindNode(Node parent, String name){
+		if(parent.nt == NodeType.SERVICELIST){
+			for(Node n:parent.children){
+				Node retNode = recAddService(n, name);
+				if (retNode != null) return retNode;
+			}
+		}else{
+			if(name.equals(parent.name)){
+				return parent;
+			}
+		}
+		return null;
+	}
+	
 	
 	public class Command{
 		boolean in;

@@ -267,7 +267,7 @@ public class GraphEditor extends JPanel {
 	public void addVertex(GraphDevice gd, String name) {
 		Node n = gd.addService(name);
 		
-		mxCell nodeCell = (mxCell) graph.insertVertex(gd.cell, null, name, 0, 0, 150, n.getHeight());
+		mxCell nodeCell = (mxCell) graph.insertVertex(gd.cell, null, name, 0, 0, 150, n.getHeight(),"fillColor=none");
 		nodeCell.setConnectable(false);
 		
 		n.nodeCell = nodeCell;
@@ -358,7 +358,7 @@ public class GraphEditor extends JPanel {
 	}
 	
 	public GraphDevice importDevice(int y, DeviceProxy data) throws ResourceException {
-		GraphDevice gd = createGraphDevice(data.getName(),y);
+		GraphDevice gd = createGraphDevice(data.getName(),y,false);
 	
 		PalcomServiceList services = data.getServiceList();
 
@@ -372,7 +372,7 @@ public class GraphEditor extends JPanel {
 	public GraphDevice importDevice(int y, SynthesizedService data) throws ResourceException {
 		PRDServiceFMDescription prds = data.getPRDServiceFMDescription();
 		
-		GraphDevice gd = createGraphDevice(prds.getID(),y);
+		GraphDevice gd = createGraphDevice(prds.getID(),y,false);
 		Node parent = gd.addNode(null, NodeType.SERVICE, prds.getID());
 		
 		parseCommands(parent, prds);
@@ -381,13 +381,15 @@ public class GraphEditor extends JPanel {
 		return gd;
 	}
 
-	private GraphDevice createGraphDevice(String name, int y){
-		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center");
+	public GraphDevice createGraphDevice(String name, int y, boolean disconnected){
+		String bg = disconnected? "#A0A0A0" : "#99CCFF";
+		
+		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center;fillColor="+bg);
 		cell.setConnectable(false);
-		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20);
+		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20, "fillColor=none");
 		add.setConnectable(false);
 		graph.refresh();
-		GraphDevice gd = new GraphDevice(cell, add);
+		GraphDevice gd = new GraphDevice(cell, add, disconnected);
 		addGraphDevice(cell.getId(), gd);
 		return gd;
 	}

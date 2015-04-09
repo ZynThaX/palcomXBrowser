@@ -13,6 +13,8 @@ import java.util.TreeMap;
 
 import org.w3c.dom.Element;
 
+import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
+import se.lth.cs.palcom.browsergui.views.GraphDevice.NodeType;
 import se.lth.cs.palcom.discovery.DeviceProxy;
 import se.lth.cs.palcom.discovery.ResourceException;
 import se.lth.cs.palcom.discovery.proxy.PalcomNetwork;
@@ -85,6 +87,7 @@ public class AwesomemxGraph extends mxGraph {
 		int topPos = 10;
 		TreeMap<String, GraphDevice> devices = new TreeMap<String, GraphDevice>();
 		TreeMap<GraphDevice, ArrayList<String>> servicesToAdd = new TreeMap<GraphDevice, ArrayList<String>>();
+		TreeMap<String, Node> serviceNodes = new TreeMap<String, Node>();
 		se.lth.cs.palcom.common.collections.List networkDevices = pcn.getDevices();
 		
 		
@@ -99,6 +102,7 @@ public class AwesomemxGraph extends mxGraph {
 			
 			while(!factory.getName().equals("DeviceDeclList")){
 				String id = factory.getAttributeValue("", "id");
+				boolean found = false;
 				if(factory.getName().equals("Identifier") && id != null){					
 					xmlGoTo(factory,"DID");
 					
@@ -109,11 +113,17 @@ public class AwesomemxGraph extends mxGraph {
 							if(devicep.getDeviceID().toString().equals(factory.getAttributeValue("", "id"))){
 								GraphDevice gd = ge.importDevice(topPos, devicep);	
 								devices.put(id, gd);
+								found = true;		
+								topPos+=100;
 							}
 						}
-					}					
-					topPos+=100;
+					}			
 				}				
+				if(!found && id != null){
+					GraphDevice gd = ge.createGraphDevice(id, topPos, true);	
+					devices.put(id, gd);		
+					topPos+=100;
+				}
 				factory.nextTag();
 			}
 			
@@ -136,14 +146,21 @@ public class AwesomemxGraph extends mxGraph {
 					xmlGoTo(factory,"Identifier");
 					names[1] = factory.getAttributeValue("", "id");//device name
 					
+					
 					GraphDevice gd = devices.get(names[1]);
 					
-					if(servicesToAdd.containsKey(gd)){
-						servicesToAdd.get(gd).add(names[0]);
-					}else{
-						ArrayList<String> nodes = new ArrayList<String>();
-						nodes.add(names[0]);
-						servicesToAdd.put(gd, nodes);
+					if(gd != null){
+						if(gd.disconnected){
+							Node node = gd.findOrAddNode(names[0]);
+							serviceNodes.put(serviceId, node);
+						}
+						if(servicesToAdd.containsKey(gd)){
+							servicesToAdd.get(gd).add(names[0]);
+						}else{
+							ArrayList<String> nodes = new ArrayList<String>();
+							nodes.add(names[0]);
+							servicesToAdd.put(gd, nodes);
+						}
 					}
 					
 					xmlGoTo(factory,"ServiceDecl");
@@ -161,10 +178,10 @@ public class AwesomemxGraph extends mxGraph {
 			
 			while(!factory.getName().equals("EventHandlerList")){
 				if(factory.getName().equals("EventHandlerClause")){
-					// TODO, detta för att avgöra var anslutningarna e gjorda
-					
+					// TODO, detta för att avgöra var anslutningarna e gjorda, skapa anslutningar mellan enheter
 					xmlGoTo(factory,"CommandEvent");
 					commandName = factory.getAttributeValue("", "commandName");
+					
 					
 					xmlGoTo(factory,"ServiceUse");
 					xmlGoTo(factory,"Identifier");
@@ -177,10 +194,11 @@ public class AwesomemxGraph extends mxGraph {
 						type = factory.getAttributeValue("", "type");
 					}
 					
-//					Node serviceNode = serviceNodes.get(serviceId);
-//					
-//					serviceNode.addCommand(direction.toLowerCase().equals("in"), commandName, type);
-					
+					Node serviceNode = serviceNodes.get(serviceId);
+					if(serviceNode != null){
+						serviceNode.addCommand(direction.toLowerCase().equals("in"), commandName, type);
+					}
+
 					xmlGoTo(factory,"EventHandlerClause");
 				}
 				factory.nextTag();
