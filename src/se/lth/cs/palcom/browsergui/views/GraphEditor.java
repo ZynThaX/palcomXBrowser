@@ -13,6 +13,7 @@ import ist.palcom.resource.descriptor.ParamInfo;
 import ist.palcom.resource.descriptor.SynthesizedService;
 import ist.palcom.resource.descriptor.LocalSID;
 import ist.palcom.resource.descriptor.GroupInfo;
+import ist.palcom.resource.descriptor.VariableDecl;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -74,11 +75,13 @@ public class GraphEditor extends JPanel {
 	private static final long serialVersionUID = 8906103669540394160L;
 	private HashSet<DeviceProxy> devices;
 	private ArrayList<ServiceObjGUI> ssList;
+	private ArrayList<VariableDecl> variableList;
 	private String assemblyData;
 	private AwesomemxGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
 	private GraphDeviceView gDV;
 	private JPanel southPanel;
+	private JPanel northPanel;
 	private JPanel centerPanel;
 	private DiscoveryManager discoveryManager;
 
@@ -131,6 +134,7 @@ public class GraphEditor extends JPanel {
 	public GraphEditor(DiscoveryManager discoveryManager){
 		this.discoveryManager = discoveryManager;
 		ssList = new ArrayList<ServiceObjGUI>();
+		variableList = new ArrayList<VariableDecl>();
 		graph = new AwesomemxGraph();
 		graphDevices = new TreeMap<String, GraphDevice>();
 		gDV = new GraphDeviceView(this);
@@ -151,6 +155,8 @@ public class GraphEditor extends JPanel {
 		
 		southPanel = new JPanel();
 		southPanel.setLayout(new BorderLayout());
+		northPanel = new JPanel();
+		northPanel.setLayout(new BorderLayout());
 		xmlDocument = mxDomUtils.createDocument();
 		
 		final mxGraphComponent graphComponent = new mxGraphComponent(graph);
@@ -202,10 +208,30 @@ public class GraphEditor extends JPanel {
 
 		southPanel.setAutoscrolls(true);
 		southPanel.setBorder(BorderFactory.createLineBorder(lightBlue, 3));
+		northPanel.setAutoscrolls(true);
+		northPanel.setBorder(BorderFactory.createLineBorder(lightBlue, 3));
 		//southPanel.setPreferredSize(new Dimension(100, 150));
 		final GraphSynthServicePanel servicePanel = new GraphSynthServicePanel(this);
+		final GraphVariablePanel varPanel = new GraphVariablePanel(this);
+		varPanel.setVisible(true);
+		servicePanel.setVisible(false);
+		final String varBtnLabel = "Variables";
+		final JButton varBtn = new JButton("︾" + " " + varBtnLabel);
+		varBtn.setBackground(lightBlue);
+		varBtn.setBorder(null);
+		varBtn.addActionListener(new ActionListener() {
+			
+			public void actionPerformed(ActionEvent e) {
+				if(varPanel.isVisible()){
+					varBtn.setText("︾" + " " + varBtnLabel);
+				} else {
+					varBtn.setText("︽" + " " + varBtnLabel);
+				}
+				varPanel.toggle();
+			}
+		});
 		final String buttonLabel = "Synthesised Services (SS)";
-		final JButton synthServiceBtn = new JButton("︾" + " " + buttonLabel);
+		final JButton synthServiceBtn = new JButton("︽" + " " + buttonLabel);
 		synthServiceBtn.setBackground(lightBlue);
 		synthServiceBtn.setBorder(null);
 		synthServiceBtn.addActionListener(new ActionListener() {
@@ -219,8 +245,12 @@ public class GraphEditor extends JPanel {
 				servicePanel.toggle();
 			}
 		});
+		
 		southPanel.add(synthServiceBtn, BorderLayout.NORTH);
 		southPanel.add(servicePanel, BorderLayout.CENTER);
+		northPanel.add(varPanel, BorderLayout.NORTH);
+		northPanel.add(varBtn, BorderLayout.CENTER);
+		
 		graphComponent.setToolTips(true);
 		//this.add(graphComponent);
 		centerPanel.add(graphComponent);
@@ -228,6 +258,7 @@ public class GraphEditor extends JPanel {
 		add(centerPanel, BorderLayout.CENTER);
 		add(dropArea,BorderLayout.WEST);
 		add(southPanel, BorderLayout.SOUTH);
+		add(northPanel, BorderLayout.NORTH);
 	}
 
 	public void addVertex(String id, String name) {

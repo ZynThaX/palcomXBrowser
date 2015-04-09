@@ -80,6 +80,7 @@ public class GraphSynthServicePanel extends JPanel {
 		servicePanel.setLayout(new FlowLayout(FlowLayout.LEADING, 10, 5));
 		servicePanel.setBackground(Color.WHITE);
 		JScrollPane serviceScrollPane = new JScrollPane(servicePanel);
+		serviceScrollPane.setBorder(BorderFactory.createBevelBorder(1));
 		addSynthService = new JButton("Create new service");
 		addSynthService.addActionListener(new ActionListener() {
 

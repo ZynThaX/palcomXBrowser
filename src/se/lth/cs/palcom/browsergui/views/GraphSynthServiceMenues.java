@@ -7,6 +7,7 @@ import java.awt.Component;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 
+import se.lth.cs.palcom.browsergui.AssemblyPanel;
 import se.lth.cs.palcom.browsergui.views.GraphSynthServicePanel.ServiceObjGUI;
 
 public class GraphSynthServiceMenues {
@@ -30,6 +31,7 @@ public class GraphSynthServiceMenues {
 	public JPopupMenu createServiceDescriptionMenu(ServiceObjGUI serviceObjGUI, SynthesizedService ss) {
 		return new ServiceDescriptionMenu(serviceObjGUI, ss);
 	}
+
 
 	public class RemoveSSMenu extends JPopupMenu  {
 		SynthesizedService ss;
@@ -99,5 +101,6 @@ public class GraphSynthServiceMenues {
 			super.show(comp, x, y);
 		}
 	}
+
 
 }
