@@ -48,6 +48,7 @@ import se.lth.cs.palcom.browsergui.views.GraphDevice.Command;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.NodeType;
 import se.lth.cs.palcom.browsergui.views.GraphSynthServicePanel.ServiceObjGUI;
+import se.lth.cs.palcom.browsergui.views.GraphVariablePanel.VariableObjGUI;
 import se.lth.cs.palcom.discovery.DeviceProxy;
 import se.lth.cs.palcom.discovery.DiscoveryManager;
 import se.lth.cs.palcom.discovery.PalcomControlServiceDescription;
@@ -75,7 +76,7 @@ public class GraphEditor extends JPanel {
 	private static final long serialVersionUID = 8906103669540394160L;
 	private HashSet<DeviceProxy> devices;
 	private ArrayList<ServiceObjGUI> ssList;
-	private ArrayList<VariableDecl> variableList;
+	private ArrayList<VariableObjGUI> variableList;
 	private String assemblyData;
 	private AwesomemxGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
@@ -134,7 +135,7 @@ public class GraphEditor extends JPanel {
 	public GraphEditor(DiscoveryManager discoveryManager){
 		this.discoveryManager = discoveryManager;
 		ssList = new ArrayList<ServiceObjGUI>();
-		variableList = new ArrayList<VariableDecl>();
+		variableList = new ArrayList<VariableObjGUI>();
 		graph = new AwesomemxGraph();
 		graphDevices = new TreeMap<String, GraphDevice>();
 		gDV = new GraphDeviceView(this);
@@ -348,6 +349,22 @@ public class GraphEditor extends JPanel {
 		for(int i = 0; i<ssList.size(); i++){
 			if(ssList.get(i).equals(ss)){
 				ssList.remove(i);
+				break;
+			}
+		}	
+	}
+	
+	public ArrayList<VariableObjGUI> getVariables(){
+		return variableList;
+	}
+	
+	public void addVariable(VariableObjGUI varObjGUI){
+		variableList.add(varObjGUI);
+	}
+	public void removeVariable(VariableDecl var) {
+		for(int i = 0; i<variableList.size(); i++){
+			if(variableList.get(i).equals(var)){
+				variableList.remove(i);
 				break;
 			}
 		}	
