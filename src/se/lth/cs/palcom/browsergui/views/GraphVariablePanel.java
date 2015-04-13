@@ -74,18 +74,34 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 //		leftScroll.setBorder(null);
 		leftPanel.setBackground(Color.white);
 		leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
-		leftPanel.add(new JLabel("Color White = img/jpeg"));
-		leftPanel.add(new JLabel("Color Green = ping"));
-		leftPanel.add(new JLabel("Color Red = text/json"));
-		leftPanel.add(new JLabel("Color White = img/jpeg"));
-		leftPanel.add(new JLabel("Color Green = ping"));
-		leftPanel.add(new JLabel("Color Red = text/json"));
-		leftPanel.add(new JLabel("Color White = img/jpeg"));
-		leftPanel.add(new JLabel("Color Green = ping"));
-		leftPanel.add(new JLabel("Color Red = text/json"));
-		leftPanel.add(new JLabel("Color White = img/jpeg"));
-		leftPanel.add(new JLabel("Color Green = ping"));
-		leftPanel.add(new JLabel("Color Red = text/json"));
+		
+		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+		
+		JLabel l1 = new JLabel("img/jpeg");
+		l1.setIcon(new SimpleIcon(Color.blue));
+		leftPanel.add(l1);
+		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+		
+		JLabel l2 = new JLabel("img/png");
+		l2.setIcon(new SimpleIcon(Color.cyan));
+		leftPanel.add(l2);
+		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+		
+		JLabel l3 = new JLabel("ping");
+		l3.setIcon(new SimpleIcon(Color.red));
+		leftPanel.add(l3);
+		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+		
+		JLabel l4 = new JLabel("text/json");
+		l4.setIcon(new SimpleIcon(Color.black));
+		leftPanel.add(l4);
+		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+		
+		JLabel l5 = new JLabel("text/java");
+		l5.setIcon(new SimpleIcon(Color.white));
+		leftPanel.add(l5);
+		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+		
 		leftScroll.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10), BorderFactory.createLineBorder(Color.GRAY)));
 		
 		rightPanel = new JPanel();
