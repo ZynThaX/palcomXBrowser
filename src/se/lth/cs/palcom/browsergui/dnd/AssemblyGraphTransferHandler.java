@@ -2,6 +2,7 @@ package se.lth.cs.palcom.browsergui.dnd;
 
 
 import ist.palcom.resource.descriptor.SynthesizedService;
+import ist.palcom.resource.descriptor.VariableDecl;
 
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
@@ -19,6 +20,7 @@ import se.lth.cs.palcom.discovery.proxy.Resource;
 public class AssemblyGraphTransferHandler extends TransferHandler{
 	public static DataFlavor FLAVOR_RESOURCE = new DataFlavor(Resource.class, "resource");
 	public static DataFlavor FLAVOR_SS = new DataFlavor(SynthesizedService.class, "synthesisedService");
+	public static DataFlavor FLAVOR_VR = new DataFlavor(SynthesizedService.class, "variableDecl");
 	private GraphEditor graphEditor;
 //	private DataFlavor flavors[];
 	
@@ -33,12 +35,12 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 	@Override
     public boolean importData(JComponent comp, Transferable t) {
 		try {
-			Object data;
-	    	Object data2;
+			Object data, data2, data3;
 			data = t.getTransferData(FLAVOR_RESOURCE);
 			data2 = t.getTransferData(FLAVOR_SS);
+			data3 = t.getTransferData(FLAVOR_VR);
 			if (!((data instanceof DeviceProxy)
-					|| data2 instanceof SynthesizedService)) {
+					|| data2 instanceof SynthesizedService || data3 instanceof VariableDecl)) {
 				return false;
 			}
 			if (data instanceof DeviceProxy){
@@ -47,6 +49,10 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 				graphEditor.importDevice((int)comp.getMousePosition().getY(),(SynthesizedService)data);
 //				System.out.println("Dropped a synthesised service");
 //				System.out.println(data2.getClass());
+				
+			} else if(data3 instanceof VariableDecl){
+				System.out.println("Dropped a variable");
+				System.out.println(data3.getClass());
 				
 			}
 
@@ -59,12 +65,13 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 	
     @Override
     public boolean canImport(TransferSupport support) {
-    	Object data;
-    	Object data2;
+    	Object data, data2, data3;
+		
 		try {
 			data = support.getTransferable().getTransferData(FLAVOR_RESOURCE);
 			data2 = support.getTransferable().getTransferData(FLAVOR_SS);
-			if ((data instanceof DeviceProxy) || data2 instanceof SynthesizedService) { 
+			data3 = support.getTransferable().getTransferData(FLAVOR_VR);
+			if ((data instanceof DeviceProxy) || data2 instanceof SynthesizedService || data3 instanceof VariableDecl) { 
 				return true;
 			} 
             return false;

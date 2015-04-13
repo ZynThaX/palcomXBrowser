@@ -2,32 +2,53 @@ package se.lth.cs.palcom.browsergui.views;
 
 import ist.palcom.resource.descriptor.Identifier;
 import ist.palcom.resource.descriptor.MimeType;
+import ist.palcom.resource.descriptor.SynthesizedService;
 import ist.palcom.resource.descriptor.VariableDecl;
 
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DragGestureEvent;
+import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragSource;
+import java.awt.dnd.DragSourceDragEvent;
+import java.awt.dnd.DragSourceDropEvent;
+import java.awt.dnd.DragSourceEvent;
+import java.awt.dnd.DragSourceListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.io.IOException;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.GroupLayout;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 import se.lth.cs.palcom.browsergui.views.GraphSynthServiceMenues.RemoveSSMenu;
+import se.lth.cs.palcom.browsergui.views.GraphSynthServicePanel.ServiceObjGUI;
 
 public class GraphVariablePanel extends JPanel implements ActionListener{
 	private JButton addSynthService;
@@ -73,9 +94,10 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 		JScrollPane rightScroll = new JScrollPane(variableListPanel);
 		variableListPanel.setBackground(Color.white);
 		variableListPanel.setLayout(new BoxLayout(variableListPanel, BoxLayout.Y_AXIS));
-
-		rightScroll.setBorder(BorderFactory.createBevelBorder(1));
-		
+		rightScroll.setBorder(null);
+		rightPanel.setBackground(Color.WHITE);
+		rightPanel.add(rightScroll);
+		rightPanel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createBevelBorder(1), BorderFactory.createEmptyBorder(5, 10, 5, 10)));
 		JButton createVarBtn = new JButton("Create variable");
 		//rightPanel.add(variableListPanel, BorderLayout.WEST);
 		//rightPanel.add(createVarBtn, BorderLayout.EAST);
@@ -95,7 +117,7 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 		leftWrapper.add(leftScroll, BorderLayout.CENTER);
 		
 		JPanel rightWrapper = new JPanel(new BorderLayout());
-		rightWrapper.add(rightScroll, BorderLayout.CENTER);
+		rightWrapper.add(rightPanel, BorderLayout.CENTER);
 		rightWrapper.add(createVarBtn, BorderLayout.EAST);
 		
 		add(leftWrapper);
@@ -153,6 +175,7 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 		variableListPanel.removeAll();
 		for (VariableObjGUI var : ge.getVariables()) {
 			variableListPanel.add(var);
+			variableListPanel.add(Box.createRigidArea(new Dimension(0, 5)));
 		}
 		variableListPanel.repaint();
 	}
@@ -173,7 +196,7 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 		}
 	}
 	
-	public class VariableObjGUI extends JPanel implements ActionListener {
+	public class VariableObjGUI extends JLabel implements ActionListener, DragGestureListener, DragSourceListener{
 		VariableDecl var;
 		DragSource dragSource;
 		//private final TwoStringsDialog twoStringsDialog = new TwoStringsDialog();
@@ -184,20 +207,123 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 //			this.setLayout(new GridLayout(0, 1));
 			Color deviceBlue = new Color(196, 219, 255);
 			this.setBackground(deviceBlue);
+			setOpaque(true);
+			setBorder(BorderFactory.createCompoundBorder(
+					BorderFactory.createLineBorder(new Color(109, 134, 173), 2),
+					BorderFactory.createEmptyBorder(5, 5, 5, 5)));
 			String type = ((MimeType)var.getVariableType()).getTypeName();
 			String name = var.getIdentifier().getID();
-//			setText(name + " (" + type + ")");
-			add(new JLabel(name + " (" + type + ")"));
+			setText(name + " (" + type + ")");
+			setIconTextGap(10);
+			setIcon(new SimpleIcon(Color.red));
+			dragSource = new DragSource();
+			dragSource.createDefaultDragGestureRecognizer(this,
+					DnDConstants.ACTION_COPY_OR_MOVE, this);
+			
+			this.addMouseListener(new MouseListener(){
+				public void mouseReleased(MouseEvent e) {
+				    if(SwingUtilities.isRightMouseButton(e)){
+				        JPopupMenu rssm = menues.createVaiableMenu(VariableObjGUI.this);
+				        rssm.show(VariableObjGUI.this, e.getX(), e.getY());
+				    }
+				}
+				public void mouseClicked(MouseEvent e) {}
+				public void mousePressed(MouseEvent e) {}
+				public void mouseEntered(MouseEvent e) {}
+				public void mouseExited(MouseEvent e) {}
+			});
 			
 		}
 		public void actionPerformed(ActionEvent e) {
-			// TODO Auto-generated method stub
-			
+			String cmd = e.getActionCommand();
+			if (cmd.equals("DeleteVariable")) {
+				removeVariable(var);
+			}
 		}
 		
 		boolean equals(VariableDecl var){
 			return this.var == var;
 		}
+		
+		public void dragEnter(DragSourceDragEvent dsde) {
+			dsde.getDragSourceContext().setCursor(DragSource.DefaultCopyDrop);
+			
+		}
+		public void dragOver(DragSourceDragEvent dsde) {}
+		public void dropActionChanged(DragSourceDragEvent dsde) {}
+		public void dragExit(DragSourceEvent dse) {
+			this.setBorder(BorderFactory.createCompoundBorder(
+					BorderFactory.createLineBorder(new Color(109, 134, 173), 2),
+					BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+			dse.getDragSourceContext().setCursor(DragSource.DefaultMoveNoDrop);
+			
+		}
+		public void dragDropEnd(DragSourceDropEvent dsde) {
+			this.setBorder(BorderFactory.createCompoundBorder(
+					BorderFactory.createLineBorder(new Color(109, 134, 173), 2),
+					BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+			
+		}
+		public void dragGestureRecognized(DragGestureEvent dge) {
+			this.setBorder(BorderFactory.createCompoundBorder(
+					BorderFactory.createDashedBorder(Color.green),
+					BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+			
+			Transferable transferable = new Transferable() {
+				public DataFlavor[] getTransferDataFlavors() {
+					return new DataFlavor[] { new DataFlavor(VariableDecl.class, "variableDecl") };
+				}
+
+				public boolean isDataFlavorSupported(DataFlavor flavor) {
+					if (!isDataFlavorSupported(flavor)) {
+						return false;
+					}
+					return true;
+				}
+
+				public Object getTransferData(DataFlavor flavor)
+						throws UnsupportedFlavorException, IOException {
+					return var;
+				}
+			};
+			dragSource.startDrag(dge, DragSource.DefaultMoveNoDrop, transferable,
+					this);
+			
+		}
+		
+	}
+	public class SimpleIcon implements Icon{
+
+	    private int width = 16;
+	    private int height = 16;
+	    private Color fillColor;
+	    
+	    private BasicStroke stroke = new BasicStroke(4);
+	    
+	    public SimpleIcon(Color color){
+	    	fillColor = color;
+	    }
+	    public void paintIcon(Component c, Graphics g, int x, int y) {
+	        Graphics2D g2d = (Graphics2D) g.create();
+
+	        g2d.setColor(fillColor);
+	        g2d.fillOval(x +1 ,y + 1,width -2 ,height -2);
+
+	        g2d.setColor(Color.BLACK);
+	        g2d.drawOval(x +1 ,y + 1,width -2 ,height -2);
+
+	        g2d.setStroke(stroke);
+
+	        g2d.dispose();
+	    }
+
+	    public int getIconWidth() {
+	        return width;
+	    }
+
+	    public int getIconHeight() {
+	        return height;
+	    }
 	}
 	private class AddVariableDialog extends JDialog {
 		private JTextField nameTextField;
