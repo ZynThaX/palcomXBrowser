@@ -29,6 +29,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.IOException;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -77,30 +78,15 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 		
 		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
 		
-		JLabel l1 = new JLabel("img/jpeg");
-		l1.setIcon(new SimpleIcon(Color.blue));
-		leftPanel.add(l1);
-		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+		for (Map.Entry<String, String> entry : ge.getAllUsedColors().entrySet()) {
+			String mime = entry.getKey();
+			String color = entry.getValue();
+			JLabel l1 = new JLabel(mime);
+			l1.setIcon(new SimpleIcon(Color.decode(color)));
+			leftPanel.add(l1);
+			leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+		}
 		
-		JLabel l2 = new JLabel("img/png");
-		l2.setIcon(new SimpleIcon(Color.cyan));
-		leftPanel.add(l2);
-		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-		
-		JLabel l3 = new JLabel("ping");
-		l3.setIcon(new SimpleIcon(Color.red));
-		leftPanel.add(l3);
-		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-		
-		JLabel l4 = new JLabel("text/json");
-		l4.setIcon(new SimpleIcon(Color.black));
-		leftPanel.add(l4);
-		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-		
-		JLabel l5 = new JLabel("text/java");
-		l5.setIcon(new SimpleIcon(Color.white));
-		leftPanel.add(l5);
-		leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
 		
 		leftScroll.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10), BorderFactory.createLineBorder(Color.GRAY)));
 		
@@ -231,7 +217,7 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 			String name = var.getIdentifier().getID();
 			setText(name + " (" + type + ")");
 			setIconTextGap(10);
-			setIcon(new SimpleIcon(Color.red));
+			setIcon(new SimpleIcon(Color.decode(ge.getColor(type))));
 			dragSource = new DragSource();
 			dragSource.createDefaultDragGestureRecognizer(this,
 					DnDConstants.ACTION_COPY_OR_MOVE, this);

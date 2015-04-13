@@ -109,6 +109,10 @@ public class GraphEditor extends JPanel {
 		}
 	}
 	
+	public TreeMap<String, String> getAllUsedColors(){
+		return usedColors;
+	}
+	
 	private String reduceTypeName(String type){
 		return type.replace("/", "");
 	}
@@ -149,6 +153,19 @@ public class GraphEditor extends JPanel {
 		availableColors.add("#009688");
 		availableColors.add("#8BC34A");
 		availableColors.add("#CDDC39");
+		
+		usedColors.put("text/plain", "#FFFFFF");
+		usedColors.put("text/cmd", "#000000");
+		usedColors.put("ping", "#000000");
+		usedColors.put("img/jpeg", "#3366FF");
+		usedColors.put("img/gif", "#33CCFF");
+		usedColors.put("img/png", "#6633FF");
+		usedColors.put("video/avi", "#FF33CC");
+		usedColors.put("video/mpeg", "#FF3366");
+		usedColors.put("video/mp4", "#CC33FF");
+		usedColors.put("audio/mp4", "#33FF66");
+		usedColors.put("audio/mpeg", "#CCFF33");
+		
 		mxConstants.DEFAULT_HOTSPOT = 1;
 		centerPanel = new JPanel();
 		centerPanel.setAutoscrolls(true);
