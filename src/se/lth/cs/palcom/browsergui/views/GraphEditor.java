@@ -1,9 +1,12 @@
 package se.lth.cs.palcom.browsergui.views;
 
 import internal.org.kxml2.io.KXmlParser;
+import internal.org.kxml2.io.KXmlSerializer;
 import internal.org.xmlpull.v1.XmlPullParser;
 import internal.org.xmlpull.v1.XmlPullParserException;
+
 import ist.palcom.resource.descriptor.*;
+import ist.palcom.xml.XMLFactory;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -12,6 +15,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
@@ -149,9 +153,9 @@ public class GraphEditor extends JPanel {
 		usedColors.put("text/plain", "#FFFFFF");
 		usedColors.put("text/cmd", "#000000");
 		usedColors.put("ping", "#000000");
-		usedColors.put("img/jpeg", "#3366FF");
-		usedColors.put("img/gif", "#33CCFF");
-		usedColors.put("img/png", "#6633FF");
+		usedColors.put("image/jpeg", "#3366FF");
+		usedColors.put("image/gif", "#33CCFF");
+		usedColors.put("image/png", "#6633FF");
 		usedColors.put("video/avi", "#FF33CC");
 		usedColors.put("video/mpeg", "#FF3366");
 		usedColors.put("video/mp4", "#CC33FF");
@@ -206,7 +210,7 @@ public class GraphEditor extends JPanel {
 
 		setLayout(new BorderLayout());
 
-		JLabel dropArea = new JLabel("<html>Drop<br>device and <br>SS here</html>");
+		JLabel dropArea = new JLabel("<html>Drop<br>device, <br>variable<br> or SS here</html>");
 		Border paddingBorder = BorderFactory.createEmptyBorder(10,10,10,10);
 		Color lightBlue = new Color(202, 221, 237);
 		Border border = BorderFactory.createLineBorder(Color.GRAY);
@@ -223,7 +227,7 @@ public class GraphEditor extends JPanel {
 		//southPanel.setPreferredSize(new Dimension(100, 150));
 		final GraphSynthServicePanel servicePanel = new GraphSynthServicePanel(this);
 		final GraphVariablePanel varPanel = new GraphVariablePanel(this);
-		varPanel.setVisible(true);
+		varPanel.setVisible(false);
 		servicePanel.setVisible(false);
 		final String varBtnLabel = "Variables";
 		final JButton varBtn = new JButton("︾" + " " + varBtnLabel);
@@ -287,6 +291,7 @@ public class GraphEditor extends JPanel {
 
 		gd.rerender();
 		graph.refresh();
+		refreshXML();
 	}
 	
 	public void removeVertex(String parentId, String cellId){
@@ -296,8 +301,10 @@ public class GraphEditor extends JPanel {
 		
 		gd.rerender();
 		graph.refresh();
+		refreshXML();
 	}
 	
+
 	private void createPorts(ArrayList<Command> commands, boolean isIn, mxCell parent){
 		String css = "shape=ellipse;perimter=ellipsePerimeter;align=right;spacingRight=20;portConstraint=east;";
 		double xRel = 1.0;
@@ -383,6 +390,30 @@ public class GraphEditor extends JPanel {
 		return ssList;
 	}
 	
+	private void refreshXML() {
+//		try {
+//			ByteArrayOutputStream resultStream = new ByteArrayOutputStream();
+//
+//            KXmlSerializer serializer = new KXmlSerializer();
+//			serializer.setOutput(resultStream, null);
+//            serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+//
+//            serializer.startDocument("ISO-8859-1", null);
+//            serializer.docdecl(" " + data.getTagName() + " SYSTEM \"" + XMLFactory.DTD + "\"");
+//
+//            data.writeXMLElement(serializer);
+//            serializer.endDocument();
+//
+//            return new String(resultStream.toByteArray(), "UTF8");
+//			
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//			return e.getMessage();
+//		}
+//		ssList.get(0).ss;
+		//TODO update the assemblyData XML!
+		
+	}
 	public GraphDevice importDevice(int y, DeviceProxy data) throws ResourceException {
 		GraphDevice gd = createGraphDevice(data.getName(), y, false);
 	
