@@ -3,17 +3,7 @@ package se.lth.cs.palcom.browsergui.views;
 import internal.org.kxml2.io.KXmlParser;
 import internal.org.xmlpull.v1.XmlPullParser;
 import internal.org.xmlpull.v1.XmlPullParserException;
-import ist.palcom.resource.descriptor.ASTNode;
-import ist.palcom.resource.descriptor.CommandInfo;
-import ist.palcom.resource.descriptor.ControlInfo;
-import ist.palcom.resource.descriptor.List;
-import ist.palcom.resource.descriptor.Opt;
-import ist.palcom.resource.descriptor.PRDServiceFMDescription;
-import ist.palcom.resource.descriptor.ParamInfo;
-import ist.palcom.resource.descriptor.SynthesizedService;
-import ist.palcom.resource.descriptor.LocalSID;
-import ist.palcom.resource.descriptor.GroupInfo;
-import ist.palcom.resource.descriptor.VariableDecl;
+import ist.palcom.resource.descriptor.*;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -80,6 +70,7 @@ public class GraphEditor extends JPanel {
 	private String assemblyData;
 	private AwesomemxGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
+	private TreeMap<String, GraphVariable> graphVariables;
 	private GraphDeviceView gDV;
 	private JPanel southPanel;
 	private JPanel northPanel;
@@ -142,6 +133,7 @@ public class GraphEditor extends JPanel {
 		variableList = new ArrayList<VariableObjGUI>();
 		graph = new AwesomemxGraph();
 		graphDevices = new TreeMap<String, GraphDevice>();
+		graphVariables = new TreeMap<String, GraphVariable>();
 		gDV = new GraphDeviceView(this);
 		usedColors = new TreeMap<String, String>();
 		availableColors = new ArrayList<String>();
@@ -291,7 +283,7 @@ public class GraphEditor extends JPanel {
 		n.nodeCell = nodeCell;
 		
 		createPorts(n.getInCommands(),true,nodeCell);
-		createPorts(n.getOutCommands(),false,nodeCell);
+		createPorts(n.getOutCommands(), false, nodeCell);
 
 		gd.rerender();
 		graph.refresh();
@@ -392,7 +384,7 @@ public class GraphEditor extends JPanel {
 	}
 	
 	public GraphDevice importDevice(int y, DeviceProxy data) throws ResourceException {
-		GraphDevice gd = createGraphDevice(data.getName(),y,false);
+		GraphDevice gd = createGraphDevice(data.getName(), y, false);
 	
 		PalcomServiceList services = data.getServiceList();
 
@@ -406,13 +398,55 @@ public class GraphEditor extends JPanel {
 	public GraphDevice importDevice(int y, SynthesizedService data) throws ResourceException {
 		PRDServiceFMDescription prds = data.getPRDServiceFMDescription();
 		
-		GraphDevice gd = createGraphDevice(prds.getID(),y,false);
+		GraphDevice gd = createGraphDevice(prds.getID(), y, false);
 		Node parent = gd.addNode(null, NodeType.SERVICE, prds.getID());
 		
 		parseCommands(parent, prds);
 		addVertex(gd, prds.getID());
 		
 		return gd;
+	}
+
+	public void importVariable(VariableDecl variable, int y) {
+
+		String name = variable.getIdentifier().getID();
+		String type = ((MimeType)variable.getVariableType()).getTypeName();
+
+		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", 150, y, 100, 50, "verticalAlign=top;textAlign=center;fillColor=#9999FF");
+		cell.setConnectable(false);
+
+
+		String css1 = "shape=ellipse;perimter=ellipsePerimeter;align=left;spacingLeft=20;portConstraint=west;";
+		String css2 = "shape=ellipse;perimter=ellipsePerimeter;align=right;spacingRight=20;portConstraint=east;";
+
+		mxGeometry geo1 = new mxGeometry(0.0, 0.25, PORT_DIAMETER, PORT_DIAMETER);
+		mxGeometry geo2 = new mxGeometry(0.0, 0.75, PORT_DIAMETER, PORT_DIAMETER);
+		mxGeometry geo3 = new mxGeometry(1.0, 0.5, PORT_DIAMETER, PORT_DIAMETER);
+		geo1.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
+		geo2.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
+		geo3.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
+		geo1.setRelative(true);
+		geo2.setRelative(true);
+		geo3.setRelative(true);
+
+		Element elem1 = xmlDocument.createElement(reduceTypeName(type) + "Target");
+		Element elem2 = xmlDocument.createElement("pingTarget");
+		Element elem3 = xmlDocument.createElement(reduceTypeName(type) + "Source");
+		elem1.setAttribute("name", "set variable");
+		elem2.setAttribute("name", "get variable");
+		elem3.setAttribute("name", "variable");
+		mxCell port1 = new mxCell(elem1, geo1,css1 + "fillColor="+getColor(type));
+		mxCell port2 = new mxCell(elem2, geo2,css1 + "fillColor="+getColor("ping"));
+		mxCell port3 = new mxCell(elem3, geo3,css2 + "fillColor="+getColor(type));
+		port1.setVertex(true);
+		port2.setVertex(true);
+		port3.setVertex(true);
+		graph.addCell(port1, cell);
+		graph.addCell(port2, cell);
+		graph.addCell(port3, cell);
+
+		graph.refresh();
+		graphVariables.put(cell.getId(), new GraphVariable(variable, cell));
 	}
 
 	public GraphDevice createGraphDevice(String name, int y, boolean disconnected){
@@ -429,8 +463,12 @@ public class GraphEditor extends JPanel {
 	}
 	
 	private void parseCommands(Node parent, PRDServiceFMDescription prds){
-		for(int i =0;i<prds.getNumControlInfo();i++){
-			recursiveGetCommands(parent, prds.getControlInfo(i));
+		if(prds != null){
+			for(int i =0;i<prds.getNumControlInfo();i++){
+				recursiveGetCommands(parent, prds.getControlInfo(i));
+			}
+		}else{
+			System.out.println("prds is null, is device description not synced yet?");
 		}
 	}
 	
@@ -484,5 +522,5 @@ public class GraphEditor extends JPanel {
 		}
 	}
 
-	
+
 }

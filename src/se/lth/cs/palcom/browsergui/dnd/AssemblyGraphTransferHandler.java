@@ -47,13 +47,8 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 				graphEditor.importDevice((int)comp.getMousePosition().getY(),(DeviceProxy)data);
 			} else if(data2 instanceof SynthesizedService){
 				graphEditor.importDevice((int)comp.getMousePosition().getY(),(SynthesizedService)data);
-//				System.out.println("Dropped a synthesised service");
-//				System.out.println(data2.getClass());
-				
 			} else if(data3 instanceof VariableDecl){
-				System.out.println("Dropped a variable");
-				System.out.println(data3.getClass());
-				
+				graphEditor.importVariable((VariableDecl) data3, (int)comp.getMousePosition().getY());
 			}
 
 			return true;
