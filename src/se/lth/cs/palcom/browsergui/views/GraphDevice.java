@@ -17,13 +17,18 @@ public class GraphDevice implements Comparable {
 	mxCell cell;
 	private mxCell add;
 	public boolean disconnected;
-	
+	public String id;
+	public String type;
+
 	private ArrayList<mxCell> createdCells;
 
-	public GraphDevice(mxCell cell, mxCell add, boolean disconnected){
+	public GraphDevice(mxCell cell, mxCell add, boolean disconnected, String id, String type){
 		this.cell = cell;
 		this.add = add;
 		this.disconnected = true;
+		this.id = id;
+		this.type = type;
+
 		createdCells = new ArrayList<mxCell>();
 		height = DEFAULT_HEIGHT;
 		root = new Node(NodeType.SERVICELIST, "root");

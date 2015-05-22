@@ -115,6 +115,7 @@ import se.lth.cs.palcom.browsergui.dnd.ResourceTransferable;
 import se.lth.cs.palcom.browsergui.dnd.ServiceCommandWrapper;
 import se.lth.cs.palcom.browsergui.dnd.SynthServiceCommandWrapper;
 import se.lth.cs.palcom.browsergui.views.GraphEditor;
+import se.lth.cs.palcom.browsergui.views.GraphObjectsHandler;
 import se.lth.cs.palcom.browsergui.views.XmlTextPane;
 import se.lth.cs.palcom.discovery.ResourceException;
 import se.lth.cs.palcom.discovery.proxy.PalcomDevice;
@@ -137,6 +138,8 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 	private DefaultTreeModel model;
 	private String filename;
 	private String assemblyData;
+	private GraphObjectsHandler graphData;
+
 	private String prevTab;
 	public static String assemblyFormat = "3.0.14"; 
 	private String oldAssemblyFormat = "AssemblyFormat"; //XXX: This was hardcoded until 3.0.14. It's still compatible, so keep this around for a while to avoid annoying warnings...
@@ -184,11 +187,12 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 			assembly.setName(filename);
 		}
 		assemblyData = assemblyRoot.writeXML();
+		graphData = new GraphObjectsHandler("");
 		xmlText = new XmlTextPane();
 		xmlText.addKeyListener(this);
 		
 		xmlText.setText(assemblyData);
-		assemblyGraph.setGraph(assemblyData);
+		assemblyGraph.setGraph(assemblyData, graphData);
 		
 		tabs.add(TAB_NAME_XML, new JScrollPane(xmlText));
 		add(tabs);
@@ -1640,13 +1644,14 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 	public void stateChanged(ChangeEvent ce) {
 		JTabbedPane tabs = (JTabbedPane) ce.getSource();
 		String tabName = tabs.getTitleAt(tabs.getSelectedIndex());
-		
+
 		if(prevTab.equals(TAB_NAME_XML)){
 			assemblyData = xmlText.getText();
 		} else if(prevTab.equals(TAB_NAME_EDITOR)){
 			assemblyData = assemblyRoot.writeXML();
 		} else if(prevTab.equals(TAB_NAME_GRAPH)){
 			assemblyData = assemblyGraph.getXML();
+			graphData = assemblyGraph.getUpdatedGraphData();
 		}
 		
 		xmlText.setText(assemblyData);
@@ -1657,7 +1662,7 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 			e.printStackTrace();
 		}
 		if(tabName.equals(TAB_NAME_GRAPH)){
-			assemblyGraph.setGraph(assemblyData);			
+			assemblyGraph.setGraph(assemblyData, graphData);
 		}
 		prevTab = tabName;
 	}

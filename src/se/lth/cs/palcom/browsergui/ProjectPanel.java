@@ -48,6 +48,7 @@ public class ProjectPanel extends JPanel implements MouseListener, ActionListene
 		model = new DefaultListModel();
 		for (String s: filenames) {
 			model.addElement(s);
+			System.out.println("assemblyname = " + s);
 		}
 		
 		fileList = new JList(model);

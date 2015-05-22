@@ -4,6 +4,7 @@ import internal.org.kxml2.io.KXmlParser;
 import internal.org.xmlpull.v1.XmlPullParser;
 import internal.org.xmlpull.v1.XmlPullParserException;
 
+import java.awt.*;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -11,8 +12,12 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
+import ist.palcom.resource.descriptor.*;
+import ist.palcom.resource.descriptor.Event;
 import org.w3c.dom.Element;
 
+import se.lth.cs.palcom.assembly.AssemblyLoadException;
+import se.lth.cs.palcom.assembly.OldschoolAssemblyLoader;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.NodeType;
 import se.lth.cs.palcom.discovery.DeviceProxy;
@@ -23,6 +28,8 @@ import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
 import com.mxgraph.util.mxConstants;
 import com.mxgraph.view.mxGraph;
+
+import static se.lth.cs.palcom.browsergui.views.GraphVariablePanel.*;
 
 public class AwesomemxGraph extends mxGraph {
 	
@@ -80,9 +87,13 @@ public class AwesomemxGraph extends mxGraph {
 	}
 	
 	
-	public void updateGraphWithData(PalcomNetwork pcn, String assemblyData, GraphEditor ge) {
+	public void updateGraphWithData(PalcomNetwork pcn, String assemblyData, GraphObjectsHandler graphData, GraphEditor ge) {
 		//se OldschoolAssemblyLoader
-		
+
+		ge.clear();
+
+		//TODO, ta bort gammal data ut grafen och data-objekten
+
 		XmlPullParser factory = new KXmlParser();
 		int topPos = 10;
 		TreeMap<String, GraphDevice> devices = new TreeMap<String, GraphDevice>();
@@ -102,27 +113,42 @@ public class AwesomemxGraph extends mxGraph {
 			
 			while(!factory.getName().equals("DeviceDeclList")){
 				String id = factory.getAttributeValue("", "id");
+
+				String deviceId = "";
+
 				boolean found = false;
 				if(factory.getName().equals("Identifier") && id != null){					
 					xmlGoTo(factory,"DID");
-					
+					deviceId = factory.getAttributeValue("", "id");
+
 					for(int i = 0;i<networkDevices.size();i++){
 						Object device = networkDevices.get(i);
 						if(device instanceof DeviceProxy){
 							DeviceProxy devicep = (DeviceProxy) device;
 							if(devicep.getDeviceID().toString().equals(factory.getAttributeValue("", "id"))){
-								GraphDevice gd = ge.importDevice(topPos, devicep);	
+								Point p = graphData.getObjectPoint(deviceId, "device");
+								if(p == null){
+									p = new Point(150, topPos);
+									topPos+=100;
+								}
+								GraphDevice gd = ge.importDevice(p, devicep);
 								devices.put(id, gd);
-								found = true;		
-								topPos+=100;
+								found = true;
 							}
 						}
 					}			
-				}				
+				}
 				if(!found && id != null){
-					GraphDevice gd = ge.createGraphDevice(id, topPos, true);	
-					devices.put(id, gd);		
-					topPos+=100;
+					//TODO, hitta x och y till deviceId
+					Point p = graphData.getObjectPoint(deviceId, "device");
+
+					if(p == null){
+						p = new Point(150, topPos);
+						topPos+=100;
+					}
+
+					GraphDevice gd = ge.createGraphDevice(id, p, true, deviceId, "device");
+					devices.put(id, gd);
 				}
 				factory.nextTag();
 			}
@@ -143,7 +169,7 @@ public class AwesomemxGraph extends mxGraph {
 					names[0] = factory.getAttributeValue("", "id");//Service name
 					
 					xmlGoTo(factory,"DeviceUse");
-					xmlGoTo(factory,"Identifier");
+					xmlGoTo(factory, "Identifier");
 					names[1] = factory.getAttributeValue("", "id");//device name
 					
 					
@@ -169,8 +195,29 @@ public class AwesomemxGraph extends mxGraph {
 			}
 			
 			xmlGoTo(factory,"EventHandlerScript");
+
+			xmlGoTo(factory, "VariableList");
+			factory.nextTag();
+			while(!factory.getName().equals("VariableList")){
+				String type = factory.getAttributeValue("", "type");
+				String id = factory.getAttributeValue("", "identifier");
+				if(factory.getName().equals("VariableDecl") && type != null && id != null){
+					VariableDecl vd =  new VariableDecl();
+					vd.initializeFromElement(factory);
+					ge.addVariable(vd);
+					Point p = graphData.getObjectPoint(id, "variable");
+					if (p != null){
+						ge.importVariable(vd, p);
+					}
+
+				}
+				factory.nextTag();
+			}
+
+
 			xmlGoTo(factory,"EventHandlerList");
 			factory.nextTag();
+
 			
 			String commandName;
 			String direction;
@@ -203,6 +250,77 @@ public class AwesomemxGraph extends mxGraph {
 				}
 				factory.nextTag();
 			}
+
+			xmlGoTo(factory, "SynthesizedServiceList");
+			factory.nextTag();
+
+			try {
+				PRDAssemblyD assembly = OldschoolAssemblyLoader.parseAssembly(xmlBytes, 0, xmlBytes.length, null);
+				PRDAssemblyVer version = assembly.getPRDAssemblyVer(0);
+
+				SynthesizedServiceList sdl = version.getSynthesizedServices();
+				for(int i= 0; i<sdl.getNumSynthesizedService();i++){
+					SynthesizedService ss = sdl.getSynthesizedService(i);
+					ge.addSynthService(ss);
+					Point p = graphData.getObjectPoint(ss.getPRDServiceFMDescription().getID(), "synthesizedservice");
+					if(p != null){
+						ge.importDevice(p,ss);
+					}
+				}
+
+
+				EventHandlerList events = version.getEventHandlerScript().getEventHandlers();
+				for(int i = 0;i<events.getChild(0).getNumChild();i++){
+//					System.out.println(events.getChild(0).getChild(i));
+					ASTNode event = events.getChild(0).getChild(i);
+					if(event instanceof EventHandlerClause){
+						EventHandlerClause ehc = (EventHandlerClause) event;
+						Event ev = ehc.getEvent();
+						//TODO, hämta ut event trigger (commandNAme) samt vilken device som anropat den (s1,s2..)
+						//eventuella parametrar skall också hållas reda på
+						for(int j=0;j<ev.getNumChild();j++){
+							Object obj = ev.getChild(j);
+
+							System.out.println(obj.getClass() + "      " + obj);
+						}
+						System.out.println("ev = " + ev + "\n");
+
+						for (int j = 0; j < ehc.getNumAction(); ++j) {
+							Action act = ehc.getAction(j);
+							System.out.println("AC = " + act);
+							if (act instanceof SendMessageAction) {
+								SendMessageAction sma = (SendMessageAction)act;
+
+
+
+//								add(new SendMessageTreeNode(sma));
+							} else if (act instanceof InvokeAction) {
+								InvokeAction ia = (InvokeAction)act;
+//								add(new InvokeTreeNode(ia));
+							} else if (act instanceof AssignAction) {
+								AssignAction aa = (AssignAction)act;
+//								add(new DeletableTreeNode(aa.getVariableUse().getName() + " = " + aa.getParamUse().getName()));
+							}
+							System.out.println();
+						}
+
+
+//						for(int j=0;j<ehc.getNumAction();j++){
+//							Action ac = ehc.getAction(j);
+//
+//							System.out.println("ac = " + ac + "\n");
+//						}
+					}
+//					System.out.println(event.getClass());
+
+
+//					events.getChildNoTransform();
+				}
+
+			} catch (AssemblyLoadException e) {
+				e.printStackTrace();
+			}
+
 
 			for(GraphDevice gd:servicesToAdd.keySet()){
 				ArrayList<String> nodes = servicesToAdd.get(gd);

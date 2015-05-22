@@ -4,6 +4,7 @@ package se.lth.cs.palcom.browsergui.dnd;
 import ist.palcom.resource.descriptor.SynthesizedService;
 import ist.palcom.resource.descriptor.VariableDecl;
 
+import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
@@ -44,11 +45,11 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 				return false;
 			}
 			if (data instanceof DeviceProxy){
-				graphEditor.importDevice((int)comp.getMousePosition().getY(),(DeviceProxy)data);
+				graphEditor.importDevice(new Point(150,(int)comp.getMousePosition().getY()),(DeviceProxy)data);
 			} else if(data2 instanceof SynthesizedService){
-				graphEditor.importDevice((int)comp.getMousePosition().getY(),(SynthesizedService)data);
+				graphEditor.importDevice(new Point(150,(int)comp.getMousePosition().getY()),(SynthesizedService)data);
 			} else if(data3 instanceof VariableDecl){
-				graphEditor.importVariable((VariableDecl) data3, (int)comp.getMousePosition().getY());
+				graphEditor.importVariable((VariableDecl) data3, new Point(150, (int)comp.getMousePosition().getY()));
 			}
 
 			return true;

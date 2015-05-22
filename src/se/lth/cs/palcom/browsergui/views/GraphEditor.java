@@ -6,10 +6,10 @@ import internal.org.xmlpull.v1.XmlPullParser;
 import internal.org.xmlpull.v1.XmlPullParserException;
 
 import ist.palcom.resource.descriptor.*;
+import ist.palcom.resource.descriptor.List;
 import ist.palcom.xml.XMLFactory;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -72,6 +72,7 @@ public class GraphEditor extends JPanel {
 	private ArrayList<ServiceObjGUI> ssList;
 	private ArrayList<VariableObjGUI> variableList;
 	private String assemblyData;
+
 	private AwesomemxGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
 	private TreeMap<String, GraphVariable> graphVariables;
@@ -79,16 +80,18 @@ public class GraphEditor extends JPanel {
 	private JPanel southPanel;
 	private JPanel northPanel;
 	private JPanel centerPanel;
-	private DiscoveryManager discoveryManager;
+	final GraphVariablePanel varPanel;
+	final GraphSynthServicePanel servicePanel;
 
+	private DiscoveryManager discoveryManager;
 	public static int PORT_DIAMETER = 20;
 	public static int PORT_RADIUS = PORT_DIAMETER / 2;
+
 	public final static String SYNTHESISED_SERVICE_NAME = "Synthesised service";
-	
 	public Document xmlDocument;
 	public TreeMap<String,String> usedColors;
 	public ArrayList<String> availableColors;
-	
+
 	public String getColor(String type){
 		String foundColor = usedColors.get(type.toLowerCase());
 		
@@ -120,8 +123,8 @@ public class GraphEditor extends JPanel {
 		for(String type:types){
 			type = reduceTypeName(type);
 			multiplicities[i*2] = new mxMultiplicity(false, type + "Source", null, null, 0,
-					"0", null, "Source Must Have No Incoming Edge", null, true);  
-			
+					"0", null, "Source Must Have No Incoming Edge", null, true);
+
 			multiplicities[i*2+1] = new mxMultiplicity(false, type+ "Target", null, null, 0,
 					"100", Arrays.asList(new String[] {type + "Source"}), null, "Must be same type",true);
 			i++;
@@ -129,8 +132,11 @@ public class GraphEditor extends JPanel {
 		
 		graph.setMultiplicities(multiplicities);
 	}
-	
-	
+
+	public GraphObjectsHandler getUpdatedGraphData(){
+		return new GraphObjectsHandler(graphDevices, graphVariables);
+	}
+
 	public GraphEditor(DiscoveryManager discoveryManager){
 		this.discoveryManager = discoveryManager;
 		ssList = new ArrayList<ServiceObjGUI>();
@@ -176,22 +182,22 @@ public class GraphEditor extends JPanel {
 		final mxGraphComponent graphComponent = new mxGraphComponent(graph);
 		new mxKeyboardHandler(graphComponent);
 		
-		graphComponent.getGraphControl().addMouseListener(new MouseAdapter(){
-			public void mouseReleased(MouseEvent e){
-				mxCell cell = (mxCell)graphComponent.getCellAt(e.getX(), e.getY());
-				if (cell != null && graph.getLabel(cell).equalsIgnoreCase("+")){
+		graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {
+			public void mouseReleased(MouseEvent e) {
+				mxCell cell = (mxCell) graphComponent.getCellAt(e.getX(), e.getY());
+				if (cell != null && graph.getLabel(cell).equalsIgnoreCase("+")) {
 					String id = cell.getParent().getId();
 					final GraphDevice gD = graphDevices.get(id);
-					if(gD != null){
+					if (gD != null) {
 						JPopupMenu menu = gDV.createServiceMenu(gD.root.children, id);
-						menu.show(e.getComponent(), e.getX()-(int)menu.getPreferredSize().getWidth()/2, e.getY());
+						menu.show(e.getComponent(), e.getX() - (int) menu.getPreferredSize().getWidth() / 2, e.getY());
 					}
-				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")){
+				} else if (cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")) {
 					JPopupMenu menu = gDV.createRemoveServiceMenu(cell);
-			        menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
-				}else if(cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getId().equals("1")){
+					menu.show(e.getComponent(), e.getX() - menu.getWidth() / 2, e.getY());
+				} else if (cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getId().equals("1")) {
 					JPopupMenu menu = gDV.createRemoveGraphDeviceMenu(cell);
-			        menu.show(e.getComponent(), e.getX()-menu.getWidth()/2, e.getY());
+					menu.show(e.getComponent(), e.getX() - menu.getWidth() / 2, e.getY());
 				}
 			}
 		});
@@ -225,8 +231,8 @@ public class GraphEditor extends JPanel {
 		northPanel.setAutoscrolls(true);
 		northPanel.setBorder(BorderFactory.createLineBorder(lightBlue, 3));
 		//southPanel.setPreferredSize(new Dimension(100, 150));
-		final GraphSynthServicePanel servicePanel = new GraphSynthServicePanel(this);
-		final GraphVariablePanel varPanel = new GraphVariablePanel(this);
+		servicePanel = new GraphSynthServicePanel(this);
+		varPanel = new GraphVariablePanel(this);
 		varPanel.setVisible(false);
 		servicePanel.setVisible(false);
 		final String varBtnLabel = "Variables";
@@ -344,10 +350,13 @@ public class GraphEditor extends JPanel {
 		return assemblyData;
 	}
 
-	public void setGraph(String assemblyData) {
+	public void setGraph(String assemblyData, GraphObjectsHandler graphData) {
 		this.assemblyData = assemblyData;
-		graph.updateGraphWithData(discoveryManager.getNetwork(), assemblyData, this);
-		
+
+
+		graph.updateGraphWithData(discoveryManager.getNetwork(), assemblyData, graphData, this);
+
+
 	}
 
 	public void addGraphDevice(String key, GraphDevice gd) {
@@ -357,7 +366,9 @@ public class GraphEditor extends JPanel {
 		graphDevices.remove(key);
 		graph.removeCells(new Object[]{removeCell});
 	}
-	
+	public void addSynthService(SynthesizedService synSer){
+		servicePanel.addService(synSer);
+	}
 	public void addSynthService(ServiceObjGUI serviceObjGUI){
 		ssList.add(serviceObjGUI);
 	}
@@ -376,6 +387,9 @@ public class GraphEditor extends JPanel {
 	
 	public void addVariable(VariableObjGUI varObjGUI){
 		variableList.add(varObjGUI);
+	}
+	public void addVariable(VariableDecl varDec){
+		varPanel.addVariable(varDec);
 	}
 	public void removeVariable(VariableDecl var) {
 		for(int i = 0; i<variableList.size(); i++){
@@ -414,9 +428,10 @@ public class GraphEditor extends JPanel {
 		//TODO update the assemblyData XML!
 		
 	}
-	public GraphDevice importDevice(int y, DeviceProxy data) throws ResourceException {
-		GraphDevice gd = createGraphDevice(data.getName(), y, false);
-	
+	public GraphDevice importDevice(Point p, DeviceProxy data) throws ResourceException {
+
+		GraphDevice gd = createGraphDevice(data.getName(), p, false, data.getDeviceID().toString(), "device");
+
 		PalcomServiceList services = data.getServiceList();
 
 		for (int i = 0; i < services.getNumService(); i++) {
@@ -426,10 +441,10 @@ public class GraphEditor extends JPanel {
 		return gd;
 	}
 	
-	public GraphDevice importDevice(int y, SynthesizedService data) throws ResourceException {
+	public GraphDevice importDevice(Point p, SynthesizedService data) throws ResourceException {
 		PRDServiceFMDescription prds = data.getPRDServiceFMDescription();
-		
-		GraphDevice gd = createGraphDevice(prds.getID(), y, false);
+
+		GraphDevice gd = createGraphDevice(prds.getID(), p, false, prds.getID(), "synthesizedservice");
 		Node parent = gd.addNode(null, NodeType.SERVICE, prds.getID());
 		
 		parseCommands(parent, prds);
@@ -438,12 +453,12 @@ public class GraphEditor extends JPanel {
 		return gd;
 	}
 
-	public void importVariable(VariableDecl variable, int y) {
+	public void importVariable(VariableDecl variable, Point p) {
 
 		String name = variable.getIdentifier().getID();
 		String type = ((MimeType)variable.getVariableType()).getTypeName();
 
-		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", 150, y, 100, 50, "verticalAlign=top;textAlign=center;fillColor=#9999FF");
+		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", p.x, p.y, 100, 50, "verticalAlign=top;textAlign=center;fillColor=#9999FF");
 		cell.setConnectable(false);
 
 
@@ -480,15 +495,15 @@ public class GraphEditor extends JPanel {
 		graphVariables.put(cell.getId(), new GraphVariable(variable, cell));
 	}
 
-	public GraphDevice createGraphDevice(String name, int y, boolean disconnected){
+	public GraphDevice createGraphDevice(String name, Point p, boolean disconnected, String id, String type){
 		String bg = disconnected? "#A0A0A0" : "#99CCFF";
 		
-		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", 150, y, 100, 30, "verticalAlign=top;textAlign=center;fillColor="+bg);
+		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", p.x, p.y, 100, 30, "verticalAlign=top;textAlign=center;fillColor="+bg);
 		cell.setConnectable(false);
 		mxCell add = (mxCell) graph.insertVertex(cell, null, "+", 0, 20, 150, 20, "fillColor=none");
 		add.setConnectable(false);
 		graph.refresh();
-		GraphDevice gd = new GraphDevice(cell, add, disconnected);
+		GraphDevice gd = new GraphDevice(cell, add, disconnected, id, type);
 		addGraphDevice(cell.getId(), gd);
 		return gd;
 	}
@@ -548,10 +563,16 @@ public class GraphEditor extends JPanel {
 			Node newParent = gd.addNode(parent, NodeType.SERVICELIST, slp.getName());
 			for (int i = 0; i < slp.getNumService(); i++) {
 				recrusiveGetServices(newParent, gd, slp.getService(i));
-				
 			}
 		}
 	}
 
 
+	public void clear() {
+		graphVariables.clear();
+		graphDevices.clear();
+		ssList.clear();
+		variableList.clear();
+		graph.removeCells(graph.getChildVertices(graph.getDefaultParent()));
+	}
 }
