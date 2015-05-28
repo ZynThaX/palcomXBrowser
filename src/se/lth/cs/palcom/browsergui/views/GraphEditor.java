@@ -644,5 +644,7 @@ public class GraphEditor extends JPanel {
 	}
 
 	public void addCellConnection(AwesomemxGraph.CellConnection cc) {
+		graph.insertEdge(graph.getDefaultParent(), null, "", cc.sourceCell, cc.targetCell);
+
 	}
 }
