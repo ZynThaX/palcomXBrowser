@@ -14,6 +14,7 @@ import java.util.TreeMap;
 
 import ist.palcom.resource.descriptor.*;
 import ist.palcom.resource.descriptor.Event;
+import jdk.nashorn.internal.objects.NativeRegExp;
 import org.w3c.dom.Element;
 
 import se.lth.cs.palcom.assembly.AssemblyLoadException;
@@ -32,7 +33,22 @@ import com.mxgraph.view.mxGraph;
 import static se.lth.cs.palcom.browsergui.views.GraphVariablePanel.*;
 
 public class AwesomemxGraph extends mxGraph {
-	
+
+	private final GraphEditor ge;
+
+	public AwesomemxGraph(GraphEditor ge){
+		this.ge = ge;
+	}
+
+	public void cellsMoved(Object[] cells,
+						   double dx,
+						   double dy,
+						   boolean disconnect,
+						   boolean constrain){
+		super.cellsMoved(cells, dx,dy,disconnect,constrain);
+		ge.setUnsaved(true);
+
+	}
 //	public 
 	public boolean isPort(Object cell)
 	{
@@ -99,9 +115,14 @@ public class AwesomemxGraph extends mxGraph {
 		TreeMap<String, GraphDevice> devices = new TreeMap<String, GraphDevice>();
 		TreeMap<GraphDevice, ArrayList<String>> servicesToAdd = new TreeMap<GraphDevice, ArrayList<String>>();
 		TreeMap<String, Node> serviceNodes = new TreeMap<String, Node>();
+		TreeMap<String, Node> synthServices = new TreeMap<String, Node>();
+
 		se.lth.cs.palcom.common.collections.List networkDevices = pcn.getDevices();
-		
-		
+
+//		ArrayList<Connection> messageEvents = new ArrayList<Connection>();
+//		ArrayList<VarConnection> variableAssignments = new ArrayList<VarConnection>();
+		ArrayList<CellConnection> cellConnections = new ArrayList<CellConnection>();
+
 		try {
 			byte[] xmlBytes = assemblyData.getBytes("UTF8");
 			
@@ -136,7 +157,7 @@ public class AwesomemxGraph extends mxGraph {
 								found = true;
 							}
 						}
-					}			
+					}
 				}
 				if(!found && id != null){
 					//TODO, hitta x och y till deviceId
@@ -221,39 +242,45 @@ public class AwesomemxGraph extends mxGraph {
 			
 			String commandName;
 			String direction;
-			String type = "ping";
-			
-			while(!factory.getName().equals("EventHandlerList")){
-				if(factory.getName().equals("EventHandlerClause")){
-					// TODO, detta för att avgöra var anslutningarna e gjorda, skapa anslutningar mellan enheter
-					xmlGoTo(factory,"CommandEvent");
-					commandName = factory.getAttributeValue("", "commandName");
-					
-					
-					xmlGoTo(factory,"ServiceUse");
-					xmlGoTo(factory,"Identifier");
-					serviceId = factory.getAttributeValue("", "id");
-					
-					xmlGoTo(factory,"CmdI");
-					direction = factory.getAttributeValue("", "direction");
-					factory.nextTag();
-					if(factory.getName().equals("PI")){
-						type = factory.getAttributeValue("", "type");
-					}
-					
-					Node serviceNode = serviceNodes.get(serviceId);
-					if(serviceNode != null){
-						serviceNode.addCommand(direction.toLowerCase().equals("in"), commandName, type);
-					}
 
-					xmlGoTo(factory,"EventHandlerClause");
+
+//			while(!factory.getName().equals("EventHandlerList")){
+//				String type = "ping";
+//				if(factory.getName().equals("EventHandlerClause")){
+//					// TODO, detta för att avgöra var anslutningarna e gjorda, skapa anslutningar mellan enheter
+//					xmlGoTo(factory,"CommandEvent");
+//					commandName = factory.getAttributeValue("", "commandName");
+//
+//
+//					xmlGoTo(factory,"ServiceUse");
+//					xmlGoTo(factory,"Identifier");
+//					serviceId = factory.getAttributeValue("", "id");
+//
+//					xmlGoTo(factory,"CmdI");
+//					direction = factory.getAttributeValue("", "direction");
+//					factory.nextTag();
+//					if(factory.getName().equals("PI")){
+//						type = factory.getAttributeValue("", "type");
+//					}
+//
+//					Node serviceNode = serviceNodes.get(serviceId);
+//					if(serviceNode != null){
+//						serviceNode.addCommand(direction.toLowerCase().equals("in"), commandName, type);
+//					}
+//
+//					xmlGoTo(factory,"EventHandlerClause");
+//				}
+//				factory.nextTag();
+//			}
+
+//			xmlGoTo(factory, "SynthesizedServiceList");
+//			factory.nextTag();
+			for(GraphDevice gd:servicesToAdd.keySet()){
+				ArrayList<String> nodes = servicesToAdd.get(gd);
+				for(String nodeName:nodes){
+					ge.addVertex(gd.getId(), nodeName);
 				}
-				factory.nextTag();
 			}
-
-			xmlGoTo(factory, "SynthesizedServiceList");
-			factory.nextTag();
-
 			try {
 				PRDAssemblyD assembly = OldschoolAssemblyLoader.parseAssembly(xmlBytes, 0, xmlBytes.length, null);
 				PRDAssemblyVer version = assembly.getPRDAssemblyVer(0);
@@ -263,72 +290,158 @@ public class AwesomemxGraph extends mxGraph {
 					SynthesizedService ss = sdl.getSynthesizedService(i);
 					ge.addSynthService(ss);
 					Point p = graphData.getObjectPoint(ss.getPRDServiceFMDescription().getID(), "synthesizedservice");
+					if (p == null) p = new Point(100,100);
 					if(p != null){
-						ge.importDevice(p,ss);
+						GraphDevice gd = ge.importDevice(p,ss);
+						synthServices.put(ss.getPRDServiceFMDescription().getID(), gd.root.children.get(0));
 					}
 				}
 
-
 				EventHandlerList events = version.getEventHandlerScript().getEventHandlers();
+
 				for(int i = 0;i<events.getChild(0).getNumChild();i++){
-//					System.out.println(events.getChild(0).getChild(i));
+					String type = "ping";
 					ASTNode event = events.getChild(0).getChild(i);
 					if(event instanceof EventHandlerClause){
-						EventHandlerClause ehc = (EventHandlerClause) event;
-						Event ev = ehc.getEvent();
-						//TODO, hämta ut event trigger (commandNAme) samt vilken device som anropat den (s1,s2..)
-						//eventuella parametrar skall också hållas reda på
-						for(int j=0;j<ev.getNumChild();j++){
-							Object obj = ev.getChild(j);
 
-							System.out.println(obj.getClass() + "      " + obj);
+
+
+
+						EventHandlerClause ehc = (EventHandlerClause) event;
+						CommandEvent ev = (CommandEvent)ehc.getEvent();
+
+						String sourceId = ev.getServiceExp().getIdentifier().getID();
+						String sourceCommand = ev.getCommandName();
+						String paramId = null, paramType = null;
+						CommandInfo ci = ev.getCommandInfo();
+						for(int j =0;j<ci.getNumParamInfo();j++){
+							ParamInfo pinfo = ci.getParamInfo(j);
+							type = pinfo.getType();
+							break;
 						}
-						System.out.println("ev = " + ev + "\n");
+						Node sourceNode;
+						if(ev.getServiceExp() instanceof SynthesizedServiceUse){
+							sourceNode = synthServices.get(sourceId);
+						}else{
+							sourceNode = serviceNodes.get(sourceId);
+						}
+
+						if(sourceNode != null){
+							sourceNode.addCommand(ci.getDirection().toLowerCase().equals("in"), ci.getName(), type);
+						}
+
+						for(int j=0;j<ci.getNumParamInfo();j++){
+							ParamInfo pi = ci.getParamInfo(j);
+							paramId = pi.getID();
+							paramType = pi.getType();
+							//TODO, kan det finnas flera parametrar i en event clause?
+							// i så fall måste paramId sparas undan i en array
+						}
 
 						for (int j = 0; j < ehc.getNumAction(); ++j) {
 							Action act = ehc.getAction(j);
-							System.out.println("AC = " + act);
 							if (act instanceof SendMessageAction) {
 								SendMessageAction sma = (SendMessageAction)act;
+								String targetId = sma.getServiceExp().getIdentifier().getID();
+								String targetCommand = sma.getCommand();
+
+								if(sma.getNumParamValue() > 0){
+									String paramName = sma.getParamValue(0).getName();
+
+									mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
+									GraphVariable gv = ge.getVariableCell(paramName);
+									mxCell targetCell = gv.getVar;
+									if(sourceCell != null && targetCell != null){
+										cellConnections.add(new CellConnection(sourceCell, targetCell));
+									}
+
+									sourceCell = gv.getOut;
+									targetCell = serviceNodes.get(targetId).getCommandCell(targetCommand);
+									if(sourceCell != null && targetCell != null){
+										cellConnections.add(new CellConnection(sourceCell, targetCell));
+									}
+								}else{
+									mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
+									mxCell targetCell = serviceNodes.get(targetId).getCommandCell(targetCommand);
+									if(sourceCell != null && targetCell != null){
+										cellConnections.add(new CellConnection(sourceCell, targetCell));
+									}
+								}
 
 
 
-//								add(new SendMessageTreeNode(sma));
+
 							} else if (act instanceof InvokeAction) {
 								InvokeAction ia = (InvokeAction)act;
-//								add(new InvokeTreeNode(ia));
+								String targetCommand = ia.getCommand();
+								Node targetNode = synthServices.get( ia.getSynthesizedServiceUse().getIdentifier().getID());
+
+								if(ia.getNumParamValue() > 0){
+									String paramName = ia.getParamValue(0).getName();
+
+									if(paramName.equalsIgnoreCase(paramId)){
+										mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
+										mxCell targetCell = targetNode.getCommandCell(targetCommand);
+										if (sourceCell != null && targetCell != null){
+											cellConnections.add(new CellConnection(sourceCell, targetCell));
+										}
+									}else{
+										mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
+										GraphVariable gv = ge.getVariableCell(paramName);
+										mxCell targetCell = gv.getVar;
+										if(sourceCell != null && targetCell != null){
+											cellConnections.add(new CellConnection(sourceCell, targetCell));
+										}
+
+										sourceCell = gv.getOut;
+										targetCell = targetNode.getCommandCell(targetCommand);
+										if(sourceCell != null && targetCell != null){
+											cellConnections.add(new CellConnection(sourceCell, targetCell));
+										}
+									}
+								}else{
+									mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
+									mxCell targetCell = targetNode.getCommandCell(targetCommand);
+									if (sourceCell != null && targetCell != null){
+										cellConnections.add(new CellConnection(sourceCell, targetCell));
+									}
+								}
+
 							} else if (act instanceof AssignAction) {
 								AssignAction aa = (AssignAction)act;
-//								add(new DeletableTreeNode(aa.getVariableUse().getName() + " = " + aa.getParamUse().getName()));
+								String varName = aa.getVariableUse().getName();
+								if(aa.getParamUse().getName().equalsIgnoreCase(paramId)){
+									mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
+									GraphVariable gv = ge.getVariableCell(varName);
+									if(gv != null){
+										mxCell targetCell = gv.setVar;
+										if(targetCell != null){
+											cellConnections.add(new CellConnection(sourceCell, targetCell));
+										}
+									}
+								}
 							}
-							System.out.println();
 						}
-
-
-//						for(int j=0;j<ehc.getNumAction();j++){
-//							Action ac = ehc.getAction(j);
-//
-//							System.out.println("ac = " + ac + "\n");
-//						}
 					}
-//					System.out.println(event.getClass());
-
-
-//					events.getChildNoTransform();
 				}
-
 			} catch (AssemblyLoadException e) {
 				e.printStackTrace();
 			}
 
 
-			for(GraphDevice gd:servicesToAdd.keySet()){
-				ArrayList<String> nodes = servicesToAdd.get(gd);
-				for(String nodeName:nodes){
-					ge.addVertex(gd.getId(), nodeName);
-				}
+
+
+			// TODO, add connections
+			for(CellConnection cc:cellConnections){
+				ge.addCellConnection(cc);
 			}
-			
+//			for(Connection c:messageEvents){
+//				ge.addConnection(c.sourceNode,c.sourceCommand,c.targetNode,c.targetCommand);
+//			}
+//			for(VarConnection vc:variableAssignments){
+//				ge.addSetVariableConnection(vc.sourceNode, vc.sourceCommand, vc.varName);
+//			}
+
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		} catch (XmlPullParserException e) {
@@ -339,6 +452,34 @@ public class AwesomemxGraph extends mxGraph {
 			e.printStackTrace();
 		}
 	}
+
+	public class CellConnection{
+		mxCell sourceCell, targetCell;
+		public CellConnection(mxCell sourceCell, mxCell targetCell){
+			this.sourceCell = sourceCell;
+			this.targetCell = targetCell;
+		}
+	}
+//
+//	private class VarConnection{
+//		Node sourceNode;
+//		String sourceCommand, varName;
+//		public VarConnection(Node sourceNode, String sourceCommand, String varName){
+//			this.sourceCommand = sourceCommand;
+//			this.sourceNode = sourceNode;
+//			this.varName = varName;
+//		}
+//	}
+//	private class Connection{
+//		Node sourceNode, targetNode;
+//		String sourceCommand, targetCommand;
+//		public Connection(Node sourceNode, String sourceCommand, Node targetNode, String targetCommand){
+//			this.sourceCommand = sourceCommand;
+//			this.sourceNode = sourceNode;
+//			this.targetCommand = targetCommand;
+//			this.targetNode = targetNode;
+//		}
+//	}
 	private void xmlGoTo(XmlPullParser factory, String tagName) throws XmlPullParserException, IOException{
 		while(!factory.getName().equals(tagName)){
 			factory.nextTag();

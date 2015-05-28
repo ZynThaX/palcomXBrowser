@@ -9,8 +9,15 @@ import ist.palcom.resource.descriptor.VariableDecl;
 public class GraphVariable {
     VariableDecl variable;
     mxCell cell;
-    public GraphVariable(VariableDecl variable, mxCell cell){
+    public mxCell setVar;
+    public mxCell getVar;
+    public mxCell getOut;
+
+    public GraphVariable(VariableDecl variable, mxCell cell, mxCell setVar, mxCell getVar, mxCell getOut){
         this.variable = variable;
         this.cell = cell;
+        this.setVar = setVar;
+        this.getVar = getVar;
+        this.getOut = getOut;
     }
 }

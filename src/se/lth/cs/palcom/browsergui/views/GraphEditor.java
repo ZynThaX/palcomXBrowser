@@ -1,5 +1,7 @@
 package se.lth.cs.palcom.browsergui.views;
 
+import com.mxgraph.util.*;
+import com.sun.org.apache.xpath.internal.SourceTree;
 import internal.org.kxml2.io.KXmlParser;
 import internal.org.kxml2.io.KXmlSerializer;
 import internal.org.xmlpull.v1.XmlPullParser;
@@ -14,6 +16,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -37,6 +41,7 @@ import javax.swing.border.Border;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import se.lth.cs.palcom.browsergui.AssemblyPanel;
 import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Command;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
@@ -58,9 +63,6 @@ import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.handler.mxKeyboardHandler;
-import com.mxgraph.util.mxConstants;
-import com.mxgraph.util.mxDomUtils;
-import com.mxgraph.util.mxPoint;
 import com.mxgraph.view.mxEdgeStyle;
 import com.mxgraph.view.mxGraph;
 import com.mxgraph.view.mxMultiplicity;
@@ -82,6 +84,7 @@ public class GraphEditor extends JPanel {
 	private JPanel centerPanel;
 	final GraphVariablePanel varPanel;
 	final GraphSynthServicePanel servicePanel;
+	private AssemblyPanel assemblyPanel;
 
 	private DiscoveryManager discoveryManager;
 	public static int PORT_DIAMETER = 20;
@@ -137,11 +140,12 @@ public class GraphEditor extends JPanel {
 		return new GraphObjectsHandler(graphDevices, graphVariables);
 	}
 
-	public GraphEditor(DiscoveryManager discoveryManager){
+	public GraphEditor(DiscoveryManager discoveryManager, AssemblyPanel assemblyPanel){
 		this.discoveryManager = discoveryManager;
+		this.assemblyPanel = assemblyPanel;
 		ssList = new ArrayList<ServiceObjGUI>();
 		variableList = new ArrayList<VariableObjGUI>();
-		graph = new AwesomemxGraph();
+		graph = new AwesomemxGraph(this);
 		graphDevices = new TreeMap<String, GraphDevice>();
 		graphVariables = new TreeMap<String, GraphVariable>();
 		gDV = new GraphDeviceView(this);
@@ -167,7 +171,8 @@ public class GraphEditor extends JPanel {
 		usedColors.put("video/mp4", "#CC33FF");
 		usedColors.put("audio/mp4", "#33FF66");
 		usedColors.put("audio/mpeg", "#CCFF33");
-		
+		updateMultiplicities();
+
 		mxConstants.DEFAULT_HOTSPOT = 1;
 		centerPanel = new JPanel();
 		centerPanel.setAutoscrolls(true);
@@ -201,12 +206,29 @@ public class GraphEditor extends JPanel {
 				}
 			}
 		});
-		
+
+//		graphComponent.addListener(mxEvent.CELLS_MOVED, new mxEventSource.mxIEventListener() {
+//			public void invoke(Object o, mxEventObject mxEventObject) {
+//				System.out.println("Update occured");
+//			}
+//		});
+//		graphComponent.addListener(mxEvent.CELLS_MOVED, new mxEventSource.mxIEventListener() {
+//			public void invoke(Object o, mxEventObject mxEventObject) {
+//				System.out.println("Update occured");
+//			}
+//		});
+
+//		graphComponent.getConnectionHandler().addListener(mxEvent.MARK, new mxEventSource.mxIEventListener() {
+//			public void invoke(Object o, mxEventObject mxEventObject) {
+//				System.out.println("Change occured");
+//			}
+//		});
 		Map<String, Object> EdgeStyle = graph.getStylesheet().getDefaultEdgeStyle();
 	    EdgeStyle.put(mxConstants.STYLE_EDGE, mxEdgeStyle.OrthConnector);
 	    EdgeStyle.put(mxConstants.STYLE_STROKEWIDTH, 1);
 	    EdgeStyle.put(mxConstants.STYLE_ROUNDED, true);
-	    
+
+
 		graph.setHtmlLabels(true);
 		graph.setAllowDanglingEdges(false);
 		graph.setCellsDeletable(true);
@@ -334,6 +356,9 @@ public class GraphEditor extends JPanel {
 			
 			
 			mxCell port = new mxCell(elem, outGeo,css + "fillColor="+color);
+
+			c.commandCell = port;
+
 			port.setVertex(true);		
 			graph.addCell(port, parent);	
 		}
@@ -446,7 +471,7 @@ public class GraphEditor extends JPanel {
 
 		GraphDevice gd = createGraphDevice(prds.getID(), p, false, prds.getID(), "synthesizedservice");
 		Node parent = gd.addNode(null, NodeType.SERVICE, prds.getID());
-		
+
 		parseCommands(parent, prds);
 		addVertex(gd, prds.getID());
 		
@@ -492,11 +517,12 @@ public class GraphEditor extends JPanel {
 		graph.addCell(port3, cell);
 
 		graph.refresh();
-		graphVariables.put(cell.getId(), new GraphVariable(variable, cell));
+		graphVariables.put(cell.getId(), new GraphVariable(variable, cell, port1, port2, port3));
 	}
 
 	public GraphDevice createGraphDevice(String name, Point p, boolean disconnected, String id, String type){
-		String bg = disconnected? "#A0A0A0" : "#99CCFF";
+		String bgType = type=="synthesizedservice" ? "#c4dcff" : "#99CCFF";
+		String bg = disconnected? "#A0A0A0" : bgType;
 		
 		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", p.x, p.y, 100, 30, "verticalAlign=top;textAlign=center;fillColor="+bg);
 		cell.setConnectable(false);
@@ -574,5 +600,49 @@ public class GraphEditor extends JPanel {
 		ssList.clear();
 		variableList.clear();
 		graph.removeCells(graph.getChildVertices(graph.getDefaultParent()));
+	}
+
+	public void setUnsaved(boolean b) {
+		assemblyPanel.setUnsaved(b);
+	}
+
+//	public void addConnection(Node sourceNode, String sourceComm, Node targetNode, String targetComm) {
+////		System.out.println(sourceId + " " + sourceComm + " " + targetId + " " + targetComm);
+//		mxCell source = sourceNode.getCommandCell(sourceComm);
+//		mxCell target = targetNode.getCommandCell(targetComm);
+//
+//		if(source != null && target != null){
+//			graph.insertEdge(graph.getDefaultParent(), null, "", source, target);
+//		}
+//	}
+
+//	public void addSetVariableConnection(Node sourceNode, String sourceComm, String varName) {
+//		mxCell source = sourceNode.getCommandCell(sourceComm);
+//		mxCell target = null;
+//		for(String varKey:graphVariables.keySet()){
+//			GraphVariable gv = graphVariables.get(varKey);
+//
+//			if(gv.variable.getIdentifier().getID().equalsIgnoreCase(varName)){
+//				target = gv.setVar;
+//			}
+//		}
+//
+//		if(source != null && target != null){
+//			//TODO, fixa hantering för getVar
+//			graph.insertEdge(graph.getDefaultParent(), null, "", source, target);
+//		}
+//	}
+	public GraphVariable getVariableCell(String varName){
+		for(String varKey:graphVariables.keySet()){
+			GraphVariable gv = graphVariables.get(varKey);
+
+			if(gv.variable.getIdentifier().getID().equalsIgnoreCase(varName)){
+				return gv;
+			}
+		}
+		return null;
+	}
+
+	public void addCellConnection(AwesomemxGraph.CellConnection cc) {
 	}
 }

@@ -44,6 +44,7 @@ public class GraphDevice implements Comparable {
 		
 		cell.getGeometry().setHeight(height);
 	}
+
 	
 	private void recRerender(Node node){
 		if(node.nt == NodeType.SERVICELIST){
@@ -76,6 +77,8 @@ public class GraphDevice implements Comparable {
 			}
 		}else{
 			if(node.nodeCell != null && id.equals(node.nodeCell.getId())){
+				node.removeCommandCells();
+
 				node.added = false;
 //				node.nodeCell.removeFromParent();
 				return node.nodeCell;
@@ -119,6 +122,7 @@ public class GraphDevice implements Comparable {
 		boolean in;
 		String name;
 		String type;
+		mxCell commandCell;
 		public Command(boolean in, String name, String type){
 			this.in = in;
 			this.name = name;
@@ -177,6 +181,30 @@ public class GraphDevice implements Comparable {
 		public ArrayList<Command> getOutCommands(){
 			return outCommands;
 		}
+
+		public void removeCommandCells() {
+			for(Command c:inCommands){
+				c.commandCell = null;
+			}
+			for(Command c:outCommands){
+				c.commandCell = null;
+			}
+		}
+
+		public mxCell getCommandCell(String commandName){
+			for(Command c:outCommands){
+				if(c.getName().equalsIgnoreCase(commandName)){
+					return c.commandCell;
+				}
+			}
+			for(Command c:inCommands){
+				if(c.getName().equalsIgnoreCase(commandName)){
+					return c.commandCell;
+				}
+			}
+			return null;
+		}
+
 	}
 	
 	public Node addService(String name){

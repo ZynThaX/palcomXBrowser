@@ -70,7 +70,9 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -107,6 +109,7 @@ import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
 import se.lth.cs.palcom.assembly.AssemblyLoadException;
+import se.lth.cs.palcom.assembly.DefaultAssemblyManager;
 import se.lth.cs.palcom.assembly.OldschoolAssemblyLoader;
 import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
 import se.lth.cs.palcom.browsergui.dnd.CommandWrapper;
@@ -122,6 +125,7 @@ import se.lth.cs.palcom.discovery.proxy.PalcomDevice;
 import se.lth.cs.palcom.discovery.proxy.PalcomService;
 import se.lth.cs.palcom.discovery.proxy.Resource;
 import se.lth.cs.palcom.discovery.proxy.ResourceListener;
+import se.lth.cs.palcom.io.FileSystem;
 import se.lth.cs.palcom.logging.Logger;
 import EDU.oswego.cs.dl.util.concurrent.Executor;
 import EDU.oswego.cs.dl.util.concurrent.ThreadedExecutor;
@@ -138,7 +142,7 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 	private DefaultTreeModel model;
 	private String filename;
 	private String assemblyData;
-	private GraphObjectsHandler graphData;
+	public GraphObjectsHandler graphData;
 
 	private String prevTab;
 	public static String assemblyFormat = "3.0.14"; 
@@ -174,7 +178,7 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 		
 		tabs = new JTabbedPane(JTabbedPane.BOTTOM);
 		
-		assemblyGraph = new GraphEditor(app.getDiscoveryManager());
+		assemblyGraph = new GraphEditor(app.getDiscoveryManager(), this);
 		prevTab = TAB_NAME_GRAPH;
 		tabs.add(TAB_NAME_GRAPH, assemblyGraph);
 		
@@ -187,7 +191,20 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 			assembly.setName(filename);
 		}
 		assemblyData = assemblyRoot.writeXML();
-		graphData = new GraphObjectsHandler("");
+		try {
+			se.lth.cs.palcom.io.File assemblyDir = application.getDevice().getDeviceRootFileSystem().getFile(DefaultAssemblyManager.ASS_DIR_NAME, false);
+			String fileName = filename + ".assgraph";
+			fileName = fileName.replaceAll(":", "-");
+			se.lth.cs.palcom.io.File assFile = assemblyDir.getFile(fileName, true);
+			graphData = new GraphObjectsHandler(assFile.getContents());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		if(graphData == null){
+			graphData = new GraphObjectsHandler();
+		}
+
 		xmlText = new XmlTextPane();
 		xmlText.addKeyListener(this);
 		
@@ -2121,6 +2138,26 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 	}
 	public void saveAssembly() {
 		application.writeAssembly(filename, getByteData());
+
+
+		try {
+			graphData = assemblyGraph.getUpdatedGraphData();
+
+			se.lth.cs.palcom.io.File assemblyDir = application.getDevice().getDeviceRootFileSystem().getFile(DefaultAssemblyManager.ASS_DIR_NAME, false);
+			String fileName = filename + ".assgraph";
+			fileName = fileName.replaceAll(":", "-");
+			se.lth.cs.palcom.io.File assFile = assemblyDir.getFile(fileName, true);
+
+			OutputStream os = assFile.getOutputStream();
+			os.write(graphData.getXmlData().getBytes());
+			os.flush();
+			os.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+
+		//TODO, create graph data file
 		setUnsaved(false);
 	}
 	public void keyPressed(KeyEvent arg0) {

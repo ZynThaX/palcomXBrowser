@@ -394,12 +394,12 @@ public class BetterAddInvokeDialog extends javax.swing.JDialog implements Action
 	}
 	
 	private void enableOKButton() {
-		if (useMap.size() != commandOut.getNumParamInfo()) {
-			return;
-		}
-		if (addressingList.isSelectionEmpty()) {
-			return;
-		}
+//		if (useMap.size() != commandOut.getNumParamInfo()) {
+//			return;
+//		}
+//		if (addressingList.isSelectionEmpty()) {
+//			return;
+//		}
 		btnOk.setEnabled(true);
 	}
 	

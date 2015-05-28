@@ -207,7 +207,7 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 			this.setPreferredSize(new Dimension(130, 20));
 //			this.setSize(new Dimension(130, 20));
 //			this.setLayout(new GridLayout(0, 1));
-			Color deviceBlue = new Color(196, 219, 255);
+			Color deviceBlue = new Color(153, 153, 255);
 			this.setBackground(deviceBlue);
 			setOpaque(true);
 			setBorder(BorderFactory.createCompoundBorder(

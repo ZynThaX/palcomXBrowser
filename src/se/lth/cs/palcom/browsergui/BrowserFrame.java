@@ -154,7 +154,7 @@ public class BrowserFrame extends JFrame implements LogListener, BrowserSelectio
 
 	public void openAssembly(String name) {
 		PRDAssemblyD av = application.loadAssembly(name);
-		
+		System.out.println("Assemblypanel created:" + name);
 		AssemblyPanel ap = new AssemblyPanel(name, ath, application, av);
 		ap.addSaveStatusListener(this);
 		AssemblyDockable dock = new AssemblyDockable(application, "assemblyDock" + (++assemblycounter), name, ap);

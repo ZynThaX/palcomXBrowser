@@ -29,10 +29,7 @@ import ist.palcom.xml.XMLFactory;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
@@ -47,6 +44,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
 import se.lth.cs.palcom.assembly.AssemblyContainer;
+import se.lth.cs.palcom.assembly.DefaultAssemblyManager;
 import se.lth.cs.palcom.assembly.FSAssemblyManager;
 import se.lth.cs.palcom.assembly.GUIRuntimeContext;
 import se.lth.cs.palcom.assembly.OldschoolAssemblyLoader.OldAssemblyContainer;
@@ -328,6 +326,8 @@ public class BrowserGUI implements BrowserApplication, AssemblyDirectory {
 				version.setEventHandlerScript(new EventHandlerScript(new VariableList(new List()), new EventHandlerList(new List())));
 				assman.createAssembly(version.getXMLData(), filename, ".ass", false);
 			}
+
+
 		} catch (Exception e) { //WTF
 			// TODO Auto-generated catch block
 			e.printStackTrace();
