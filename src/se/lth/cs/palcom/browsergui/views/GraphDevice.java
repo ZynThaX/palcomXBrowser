@@ -4,6 +4,9 @@ import java.util.ArrayList;
 
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
+import ist.palcom.resource.descriptor.AbstractServiceDecl;
+import ist.palcom.resource.descriptor.ServiceDecl;
+import se.lth.cs.palcom.discovery.proxy.PalcomService;
 
 public class GraphDevice implements Comparable {
 	final static int PORT_DIAMETER = 20;
@@ -12,6 +15,8 @@ public class GraphDevice implements Comparable {
 	public static mxGeometry geo2 = new mxGeometry(1.0, 0.5, PORT_DIAMETER,PORT_DIAMETER);
 
 	public final static int DEFAULT_HEIGHT = 40;
+	final String xml;
+	String name;
 	Node root;
 	int height;
 	mxCell cell;
@@ -22,16 +27,18 @@ public class GraphDevice implements Comparable {
 
 	private ArrayList<mxCell> createdCells;
 
-	public GraphDevice(mxCell cell, mxCell add, boolean disconnected, String id, String type){
+	public GraphDevice(mxCell cell, mxCell add, boolean disconnected, String id, String type, String xml, String name){
 		this.cell = cell;
 		this.add = add;
 		this.disconnected = true;
 		this.id = id;
 		this.type = type;
+		this.xml = xml;
+		this.name = name;
 
 		createdCells = new ArrayList<mxCell>();
 		height = DEFAULT_HEIGHT;
-		root = new Node(NodeType.SERVICELIST, "root");
+		root = new Node(NodeType.SERVICELIST, "root", null, null);
 	}
 	
 	public void rerender(){
@@ -64,49 +71,53 @@ public class GraphDevice implements Comparable {
 		return cell.getId();
 	}
 
-	public mxCell removeService(String cellId){
+	public mxCell hideService(String cellId){
 		add.setVisible(true);
-		return recRemoveService(root, cellId);
+		return recHideService(root, cellId);
 	}
 	
-	private mxCell recRemoveService(Node node, String id){
+	private mxCell recHideService(Node node, String id){
 		if(node.nt == NodeType.SERVICELIST){
 			for(Node n:node.children){
-				mxCell removedCell = recRemoveService(n, id);
+				mxCell removedCell = recHideService(n, id);
 				if (removedCell != null) return removedCell;
 			}
 		}else{
 			if(node.nodeCell != null && id.equals(node.nodeCell.getId())){
 				node.removeCommandCells();
-
 				node.added = false;
-//				node.nodeCell.removeFromParent();
 				return node.nodeCell;
 			}
 		}
 		return null;
 	}
 
-	public Node addNode(Node parent, NodeType nt, String name){
+	public Node addNode(Node parent, NodeType nt, String name, String palcomServiceId, AbstractServiceDecl asd){
 		if(parent == null){
 			parent = root;
 		}
-		Node n = new Node(nt, name);
+		Node n = new Node(nt, name, palcomServiceId, asd);
 		parent.children.add(n);
 		return n;
 	}
-	public Node findOrAddNode(String name){
+	public Node findOrAddNode(String name, GraphEditor graphEditor, String palcomServiceId, AbstractServiceDecl asd){
+
 		Node node = recFindNode(root, name);
-		if(node == null){
-			node = new Node(NodeType.SERVICE, name);
+		if (node == null){
+			node = new Node(NodeType.SERVICE, name, palcomServiceId, asd);
 			root.children.add(node);
+		}else{
+			node.palcomServiceId = palcomServiceId;
 		}
+
 		return node;
 	}
+
+
 	private Node recFindNode(Node parent, String name){
 		if(parent.nt == NodeType.SERVICELIST){
 			for(Node n:parent.children){
-				Node retNode = recAddService(n, name);
+				Node retNode = recDisplayService(n, name);
 				if (retNode != null) return retNode;
 			}
 		}else{
@@ -117,12 +128,29 @@ public class GraphDevice implements Comparable {
 		return null;
 	}
 	
-	
+	public ArrayList<Node> getUsedServices(){
+		ArrayList<Node> nodes = new ArrayList<Node>();
+		recGetUsedServices(root,nodes);
+		return nodes;
+	}
+	private void recGetUsedServices(Node parent, ArrayList<Node> nodes){
+		if(parent.nt == NodeType.SERVICELIST){
+			for(Node n:parent.children){
+				recGetUsedServices(n,nodes);
+			}
+		}else{
+			if(parent.added){
+				nodes.add(parent);
+			}
+		}
+	}
+
 	public class Command{
 		boolean in;
 		String name;
 		String type;
 		mxCell commandCell;
+
 		public Command(boolean in, String name, String type){
 			this.in = in;
 			this.name = name;
@@ -146,7 +174,9 @@ public class GraphDevice implements Comparable {
 		boolean added;
 		String id;
 		mxCell nodeCell;
-		
+		String palcomServiceId;
+		AbstractServiceDecl asd;
+
 		ArrayList<Command> inCommands;		
 		ArrayList<Command> outCommands;
 		
@@ -154,17 +184,19 @@ public class GraphDevice implements Comparable {
 			return Math.max(30*Math.max(inCommands.size(), outCommands.size()),20);
 		}
 		
-		public Node(NodeType nt, String name){
+		public Node(NodeType nt, String name, String palcomServiceId, AbstractServiceDecl asd){
 			children = new ArrayList<Node>();
 			this.nt = nt;
 			this.name = name;
+			this.palcomServiceId = palcomServiceId;
+			this.asd = asd;
 			added = false;
 			inCommands = new ArrayList<GraphDevice.Command>();
 			outCommands = new ArrayList<GraphDevice.Command>();
 		}
 		
-		public void add(NodeType nt, String name){
-			children.add(new Node(nt, name));
+		public void add(NodeType nt, String name, String palcomServiceId, AbstractServiceDecl asd){
+			children.add(new Node(nt, name, palcomServiceId, asd));
 		}
 		
 		public void addCommand(boolean in, String name, String type){
@@ -207,22 +239,23 @@ public class GraphDevice implements Comparable {
 
 	}
 	
-	public Node addService(String name){
-		Node node = recAddService(root,name);
+	public Node displayService(String name){
+		Node node = recDisplayService(root, name);
 		if(!hasUnAddedServices(root)){
 			add.setVisible(false);
 		}
 		return node;
 	}
-	public Node recAddService(Node node, String name){
+	public Node recDisplayService(Node node, String name){
 		if(node.nt == NodeType.SERVICELIST){
 			for(Node n:node.children){
-				Node retNode = recAddService(n, name);
+				Node retNode = recDisplayService(n, name);
 				if (retNode != null) return retNode;
 			}
 		}else{
 			if(name.equals(node.name)){
 				node.added = true;
+//				node.palcomServiceId = palcomServiceId;
 				return node;
 			}
 		}
