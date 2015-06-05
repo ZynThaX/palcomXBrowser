@@ -1,30 +1,18 @@
 package se.lth.cs.palcom.browsergui.views;
 
-import com.mxgraph.model.mxGraphModel;
 import com.mxgraph.swing.handler.mxConnectionHandler;
 import com.mxgraph.util.*;
-import com.sun.org.apache.xpath.internal.SourceTree;
-import internal.org.kxml2.io.KXmlParser;
-import internal.org.kxml2.io.KXmlSerializer;
-import internal.org.xmlpull.v1.XmlPullParser;
 import internal.org.xmlpull.v1.XmlPullParserException;
 
 import ist.palcom.resource.descriptor.*;
 import ist.palcom.resource.descriptor.List;
-import ist.palcom.xml.XMLFactory;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -43,6 +31,7 @@ import javax.swing.border.Border;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import org.w3c.dom.UserDataHandler;
 import se.lth.cs.palcom.assembly.AssemblyLoadException;
 import se.lth.cs.palcom.browsergui.AssemblyPanel;
 import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
@@ -65,7 +54,6 @@ import com.mxgraph.model.mxGeometry;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.handler.mxKeyboardHandler;
 import com.mxgraph.view.mxEdgeStyle;
-import com.mxgraph.view.mxGraph;
 import com.mxgraph.view.mxMultiplicity;
 
 public class GraphEditor extends JPanel {
@@ -199,6 +187,8 @@ public class GraphEditor extends JPanel {
 		final mxGraphComponent graphComponent = new mxGraphComponent(graph);
 		new mxKeyboardHandler(graphComponent);
 
+
+
 		graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {
 			public void mouseReleased(MouseEvent e) {
 				mxCell cell = (mxCell) graphComponent.getCellAt(e.getX(), e.getY());
@@ -220,28 +210,29 @@ public class GraphEditor extends JPanel {
 		});
 
 
-		graphComponent.getConnectionHandler().addListener(mxEvent.CONNECT, new mxEventSource.mxIEventListener() {
-			public void invoke(Object o, mxEventObject mxEventObject) {
-				// connection was made
-				mxConnectionHandler mch = (mxConnectionHandler) o;
-				mxCell cell = (mxCell)mxEventObject.getProperties().get("cell");
-				mxCell par = (mxCell) graph.getDefaultParent();
-
-//				System.out.println(par.getId());
-//				System.out.println(cell.getValue() + " - " + cell.getParent().getId());
-
-//				System.out.println();
-				Object[] conns = graph.getConnections(cell.getSource(), par);
-
-				for(int i=0;i<conns.length;i++){
-					mxCell c = (mxCell) conns[i];
-					mxCell tar = (mxCell) c.getTarget();
-					mxCell src = (mxCell) c.getSource();
-
-					System.out.println(src.getValue() + " - " + tar.getValue());
-				}
-			}
-		});
+        // TODO, catcha alla händelser
+//		graphComponent.getConnectionHandler().addListener(mxEvent.CONNECT, new mxEventSource.mxIEventListener() {
+//			public void invoke(Object o, mxEventObject mxEventObject) {
+//				// connection was made
+//				mxConnectionHandler mch = (mxConnectionHandler) o;
+//				mxCell cell = (mxCell)mxEventObject.getProperties().get("cell");
+//				mxCell par = (mxCell) graph.getDefaultParent();
+//
+////				System.out.println(par.getId());
+////				System.out.println(cell.getValue() + " - " + cell.getParent().getId());
+//
+////				System.out.println();
+//				Object[] conns = graph.getConnections(cell.getSource(), par);
+//
+//				for(int i=0;i<conns.length;i++){
+//					mxCell c = (mxCell) conns[i];
+//					mxCell tar = (mxCell) c.getTarget();
+//					mxCell src = (mxCell) c.getSource();
+//
+//					System.out.println(src.getValue() + " - " + tar.getValue());
+//				}
+//			}
+//		});
 //		graphComponent.addListener(mxEvent.CELLS_MOVED, new mxEventSource.mxIEventListener() {
 //			public void invoke(Object o, mxEventObject mxEventObject) {
 //				System.out.println("Update occured");
@@ -338,10 +329,10 @@ public class GraphEditor extends JPanel {
 		add(northPanel, BorderLayout.NORTH);
 	}
 
-	public void addVertex(String id, String name) {
-		addVertex(graphDevices.get(id), name);
+	public void showService(String id, String name) {
+		showService(graphDevices.get(id), name);
 	}
-	public void addVertex(GraphDevice gd, String name) {
+	public void showService(GraphDevice gd, String name) {
 		Node n = gd.displayService(name);
 
 		if(n.palcomServiceId == null && !gd.type.equalsIgnoreCase("synthesizedservice")){
@@ -356,22 +347,20 @@ public class GraphEditor extends JPanel {
 
 		n.nodeCell = nodeCell;
 		
-		createPorts(n.getInCommands(),true,gd.cell);
-		createPorts(n.getOutCommands(), false, gd.cell);
+		createPorts(n.getInCommands(), true, nodeCell);
+		createPorts(n.getOutCommands(), false, nodeCell);
 
 		gd.rerender();
 		graph.refresh();
-		refreshXML();
 	}
 	
-	public void removeVertex(String parentId, String cellId){
+	public void hideService(String parentId, String cellId){
 		GraphDevice gd = graphDevices.get(parentId);
 		mxCell removedCell = gd.hideService(cellId);
 		graph.removeCells(new Object[]{removedCell});
-		
+		//TODO, ta bort child cells? connections.
 		gd.rerender();
 		graph.refresh();
-		refreshXML();
 	}
 	
 
@@ -395,6 +384,8 @@ public class GraphEditor extends JPanel {
 
 			Element elem = xmlDocument.createElement(reduceTypeName(c.type) + typeExtenstion);
 			elem.setAttribute("name", c.name);
+            elem.setUserData("command", c, null);
+
 
 
 			mxCell port = new mxCell(elem, outGeo,css + "fillColor="+color);
@@ -421,29 +412,72 @@ public class GraphEditor extends JPanel {
 //				System.out.println("Device:");
 //				System.out.println(gd.xml);
 
-				for(Node node:gd.getUsedServices()){
-					ServiceDecl decl = new ServiceDecl(new Identifier(node.palcomServiceId), node.asd);
-//					System.out.println("Used service: " + node.name + " - " + node.palcomServiceId);
+
+                for(Node node:gd.getUsedServices()){
+                    ServiceUse su = new ServiceUse(new Identifier(node.palcomServiceId));
+
+                    ServiceDecl decl = new ServiceDecl(new Identifier(node.palcomServiceId), node.asd);
+
 //					System.out.println(decl);
-					System.out.println("Node: " + node.name + " - " + gd.name);
+
 					for(Command c:node.outCommands){
 						if(c.commandCell != null){
-//							System.out.println("Getconnection with node(service) as parent  " + graph.getConnections(c.commandCell, node.nodeCell).length);
-//							System.out.println("Getconnection with device as parent  " + graph.getConnections(c.commandCell, node.nodeCell.getParent()).length);
-							System.out.println("Getconnection with default parent as parent  " + graph.getConnections(c.commandCell.getParent(), graph.getDefaultParent()).length);
-//							graph.
-//							System.out.println(graph.getConnections(cc.sourceCell, parent));
-//							System.out.println(graph.getConnections(cc.sourceCell.getParent(), parent).length);
+                            Object[] edges = graph.getEdges(c.commandCell);
+                            CommandEvent ce = c.ce;
+                            ce.setServiceExp(su);
+
+
+                            for(int i=0;i<edges.length;i++){
+                                // TODO, Service skall ha en connection nu
+                                mxCell target = (mxCell)((mxCell) edges[i]).getTarget();
+
+
+                                System.out.println("Edge from: " +c.name + " to: " + target.getAttribute("name"));
+
+
+                                mxCell targetParent = getTopParentCell(target);
+
+                                GraphDevice targetDev = graphDevices.get(targetParent.getId());
+                                GraphVariable targetVar = graphVariables.get(targetParent.getId());
+
+                                if(targetDev != null){
+                                    List params = new List();
+                                    //TODO parameter lista
+
+                                    Element e = (Element) target.getValue();
+                                    Command targetCommand = (Command) e.getUserData("command");
+
+                                    if(targetDev.type.equalsIgnoreCase("synthesizedservice")){
+                                        InvokeAction act = new InvokeAction(targetCommand.ce.getCommandName(), params, new SynthesizedServiceUse(new Identifier(targetDev.id)), "ToAll", new Opt(), new Opt());
+                                    }else{
+                                        SendMessageAction act = new SendMessageAction(targetCommand.ce.getCommandName(), params, su);
+                                    }
+                                }else if(targetVar != null) {
+                                    if(c.commandCell.getAttribute("name").equalsIgnoreCase("set variable")){
+                                        // TODO, set variable
+                                        System.out.println("Set var");
+                                    }else{
+                                        System.out.println("get var");
+                                        // TODO, get variable
+                                        // get output from var aswell
+                                    }
+                                }
+                            }
 
 						}else{
-//							System.out.println("Commandcell is null: " + c.getName());
+							System.out.println("Commandcell is null: " + c.getName());
 						}
 					}
-//					for(Command c:node.inCommands){
-//						System.out.println("In: " +graph.getEdges(c.commandCell.getId()).length);
-//					}
 				}
-			}
+			}else{
+                //TODO
+
+//            ServiceUse su = new ServiceUse(new Identifier(parent.palcomServiceId));
+
+
+//            CommandEvent ce = new CommandEvent(sscw.command.getID(), new SynthesizedServiceUse(new Identifier(sscw.getId())), new Opt(sscw.command));
+
+            }
 		}
 		for(ServiceObjGUI ssObj : ssList){
 //			System.out.println("SynthenizedService:");
@@ -454,13 +488,16 @@ public class GraphEditor extends JPanel {
 //			System.out.println("Variable:");
 //			System.out.println(varObj.var);
 		}
-
-
-
-
-
 		return assemblyData;
 	}
+
+    private mxCell getTopParentCell(mxCell cell){
+        if(cell.getParent().getId().equalsIgnoreCase("1")){
+            return cell;
+        }else{
+            return getTopParentCell((mxCell)cell.getParent());
+        }
+    }
 
 	public void setGraph(String assemblyData, GraphObjectsHandler graphData) {
 		this.assemblyData = assemblyData;
@@ -525,31 +562,7 @@ public class GraphEditor extends JPanel {
 	public ArrayList<ServiceObjGUI> getSynthServices(){
 		return ssList;
 	}
-	
-	private void refreshXML() {
-//		try {
-//			ByteArrayOutputStream resultStream = new ByteArrayOutputStream();
-//
-//            KXmlSerializer serializer = new KXmlSerializer();
-//			serializer.setOutput(resultStream, null);
-//            serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
-//
-//            serializer.startDocument("ISO-8859-1", null);
-//            serializer.docdecl(" " + data.getTagName() + " SYSTEM \"" + XMLFactory.DTD + "\"");
-//
-//            data.writeXMLElement(serializer);
-//            serializer.endDocument();
-//
-//            return new String(resultStream.toByteArray(), "UTF8");
-//			
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//			return e.getMessage();
-//		}
-//		ssList.get(0).ss;
-		//TODO update the assemblyData XML!
-		
-	}
+
 	public GraphDevice importDevice(Point p, DeviceProxy data) throws ResourceException {
 		PalcomDevice dev = (PalcomDevice)data;
 		DeviceDecl decl = new DeviceAddressDecl(new Identifier(dev.getName()), new DeviceAddress(dev.getDeviceID()));
@@ -572,7 +585,7 @@ public class GraphEditor extends JPanel {
 		Node parent = gd.addNode(null, NodeType.SERVICE, prds.getID(),null,null);
 
 		parseCommands(parent, prds);
-		addVertex(gd, prds.getID());
+		showService(gd, prds.getID());
 		
 		return gd;
 	}
@@ -663,8 +676,9 @@ public class GraphEditor extends JPanel {
 					}
 				}
 			}
-			parent.addCommand(isIn, name, type);
-		}else if(ci instanceof GroupInfo){
+            CommandEvent ce = new CommandEvent(comI.getID(), null, new Opt(comI));
+            parent.addCommand(isIn, name, type, ce);
+        }else if(ci instanceof GroupInfo){
 			GroupInfo gi = (GroupInfo) ci;
 			for(int i=0;i<gi.getNumControlInfo();i++){
 				recursiveGetCommands(parent, gi.getControlInfo(i));
@@ -732,18 +746,5 @@ public class GraphEditor extends JPanel {
 	public void addCellConnection(AwesomemxGraph.CellConnection cc) {
 		Object parent = graph.getDefaultParent();
 		graph.insertEdge(parent, null, "", cc.sourceCell, cc.targetCell);
-
-		if(cc.sourceCell == null || cc.targetCell == null){
-			System.out.println("NULL!! src: " +cc.sourceCell + "  tar: " + cc.targetCell);
-			if(cc.sourceCell != null){
-				System.out.println(cc.sourceCell.getParent().getValue());
-			}
-			if(cc.targetCell != null){
-				System.out.println(cc.targetCell.getParent().getValue());
-			}
-		}else{
-			System.out.println(graph.getConnections(cc.sourceCell, parent));
-			System.out.println(graph.getConnections(cc.sourceCell.getParent(), parent).length);
-		}
 	}
 }

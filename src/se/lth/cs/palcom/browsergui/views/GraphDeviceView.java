@@ -44,7 +44,7 @@ public class GraphDeviceView {
 			removeItem.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 					String parentId = removeCell.getParent().getId();
-					ge.removeVertex(parentId, removeCell.getId());
+					ge.hideService(parentId, removeCell.getId());
 				}
 			});
 			add(removeItem);
@@ -88,7 +88,7 @@ public class GraphDeviceView {
 						final JMenuItem item = new JMenuItem(n.name + " ("+n.inCommands.size()+"," + n.outCommands.size()+")");
 						item.addActionListener(new ActionListener() {
 							public void actionPerformed(ActionEvent e) {
-								ge.addVertex(id,n.name);
+								ge.showService(id, n.name);
 							}
 						});
 						jm.add(item);

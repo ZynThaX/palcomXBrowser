@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
 import ist.palcom.resource.descriptor.AbstractServiceDecl;
+import ist.palcom.resource.descriptor.CommandEvent;
 import ist.palcom.resource.descriptor.ServiceDecl;
 import se.lth.cs.palcom.discovery.proxy.PalcomService;
 
@@ -30,7 +31,7 @@ public class GraphDevice implements Comparable {
 	public GraphDevice(mxCell cell, mxCell add, boolean disconnected, String id, String type, String xml, String name){
 		this.cell = cell;
 		this.add = add;
-		this.disconnected = true;
+		this.disconnected = disconnected;
 		this.id = id;
 		this.type = type;
 		this.xml = xml;
@@ -146,15 +147,17 @@ public class GraphDevice implements Comparable {
 	}
 
 	public class Command{
-		boolean in;
+        CommandEvent ce;
+        boolean in;
 		String name;
 		String type;
 		mxCell commandCell;
 
-		public Command(boolean in, String name, String type){
+		public Command(boolean in, String name, String type, CommandEvent ce){
 			this.in = in;
 			this.name = name;
 			this.type = type;
+            this.ce = ce;
 		}
 		
 		String getName(){
@@ -199,11 +202,11 @@ public class GraphDevice implements Comparable {
 			children.add(new Node(nt, name, palcomServiceId, asd));
 		}
 		
-		public void addCommand(boolean in, String name, String type){
+		public void addCommand(boolean in, String name, String type, CommandEvent ce){
 			if(in){
-				inCommands.add(new Command(in, name, type));
+				inCommands.add(new Command(in, name, type, ce));
 			}else{
-				outCommands.add(new Command(in, name, type));
+				outCommands.add(new Command(in, name, type, ce));
 			}
 		}
 		

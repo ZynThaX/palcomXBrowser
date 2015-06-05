@@ -1,6 +1,5 @@
 package se.lth.cs.palcom.browsergui.views;
 
-import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader;
 import internal.org.kxml2.io.KXmlParser;
 import internal.org.xmlpull.v1.XmlPullParser;
 import internal.org.xmlpull.v1.XmlPullParserException;
@@ -9,29 +8,22 @@ import java.awt.*;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
 import ist.palcom.resource.descriptor.*;
-import ist.palcom.resource.descriptor.Event;
-import jdk.nashorn.internal.objects.NativeRegExp;
 import org.w3c.dom.Element;
 
 import se.lth.cs.palcom.assembly.AssemblyLoadException;
 import se.lth.cs.palcom.assembly.OldschoolAssemblyLoader;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
-import se.lth.cs.palcom.browsergui.views.GraphDevice.NodeType;
 import se.lth.cs.palcom.discovery.DeviceProxy;
 import se.lth.cs.palcom.discovery.ResourceException;
 import se.lth.cs.palcom.discovery.proxy.PalcomNetwork;
 
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
-import com.mxgraph.util.mxConstants;
 import com.mxgraph.view.mxGraph;
-
-import static se.lth.cs.palcom.browsergui.views.GraphVariablePanel.*;
 
 public class AwesomemxGraph extends mxGraph {
 
@@ -50,12 +42,12 @@ public class AwesomemxGraph extends mxGraph {
 		ge.setUnsaved(true);
 
 	}
-//	public 
-	public boolean isPort(Object cell)
-	{
-		mxGeometry geo = getCellGeometry(cell);
-		return (geo != null) ? geo.isRelative() : false;
-	}
+//	public
+//	public boolean isPort(Object cell)
+//	{
+//		mxGeometry geo = getCellGeometry(cell);
+//		return (geo != null) ? geo.isRelative() : false;
+//	}
 	public String getToolTipForCell(Object cell)
 	{
 		if (model.isEdge(cell))
@@ -81,7 +73,7 @@ public class AwesomemxGraph extends mxGraph {
 	public boolean isCellMovable(Object cell){
 		mxCell c = ((mxCell)cell);
 		return c != null && c.getParent() != null && c.getParent().getId().equals("1");
-		
+
 	}
 
 	public String convertValueToString(Object cell){
@@ -95,14 +87,14 @@ public class AwesomemxGraph extends mxGraph {
 			}
 		}
 		return super.convertValueToString(cell);
-	}		
+	}
 	private String reduceNameLength(String name){
 		if(name.length() > 8){
 			return name.substring(0, 5) + "..";
 		}
 		return name;
 	}
-	
+
 	
 	public void updateGraphWithData(PalcomNetwork pcn, String assemblyData, GraphObjectsHandler graphData, GraphEditor ge) throws IOException, AssemblyLoadException, XmlPullParserException, ResourceException {
 		//se OldschoolAssemblyLoader
@@ -168,7 +160,8 @@ public class AwesomemxGraph extends mxGraph {
 						p = new Point(150, topPos);
 						topPos+=100;
 					}
-					GraphDevice gd = ge.createGraphDevice(identifier, p, true, did, "device",dd.toString());
+                    GraphDevice gd = ge.createGraphDevice(identifier, p, true, did, "device",dd.toString());
+
 					devices.put(identifier, gd);
 				}
 			}
@@ -189,13 +182,16 @@ public class AwesomemxGraph extends mxGraph {
 				GraphDevice gd = devices.get(deviceName);
 
 				if(gd != null){
-					if(gd.disconnected){
-						Node node = gd.findOrAddNode(serviceName, ge, palcomServiceId, abstractServiceDecl);
-						ge.updateServiceId(palcomServiceId);
-
-						serviceNodes.put(palcomServiceId, node);
-					}
-					if(servicesToAdd.containsKey(gd)){
+                    Node node = gd.findOrAddNode(serviceName, ge, palcomServiceId, abstractServiceDecl);
+                    serviceNodes.put(palcomServiceId, node);
+                    if(gd.disconnected){
+                        ge.updateServiceId(palcomServiceId);
+                        System.out.println("Scanning commands from disconnectd device: " + gd.name + " - " + gd.disconnected);
+                        parseAndAddCommands(node, palcomServiceId, version);
+                    }else{
+                        //TODO, show all commands for node???
+                    }
+                    if(servicesToAdd.containsKey(gd)){
 						servicesToAdd.get(gd).add(serviceName);
 					}else{
 						ArrayList<String> nodes = new ArrayList<String>();
@@ -238,7 +234,7 @@ public class AwesomemxGraph extends mxGraph {
 		for(GraphDevice gd:servicesToAdd.keySet()){
 			ArrayList<String> nodes = servicesToAdd.get(gd);
 			for(String nodeName:nodes){
-				ge.addVertex(gd.getId(), nodeName);
+				ge.showService(gd.getId(), nodeName);
 			}
 		}
 
@@ -261,10 +257,6 @@ public class AwesomemxGraph extends mxGraph {
 			String type = "ping";
 			ASTNode event = events.getChild(0).getChild(i);
 			if(event instanceof EventHandlerClause){
-
-
-
-
 				EventHandlerClause ehc = (EventHandlerClause) event;
 				CommandEvent ev = (CommandEvent)ehc.getEvent();
 
@@ -272,8 +264,6 @@ public class AwesomemxGraph extends mxGraph {
 				String sourceCommand = ev.getCommandName();
 				String paramId = null, paramType = null;
 				CommandInfo ci = ev.getCommandInfo();
-
-//						System.out.println(ci.getParent().getParent());
 
 				for(int j =0;j<ci.getNumParamInfo();j++){
 					ParamInfo pinfo = ci.getParamInfo(j);
@@ -288,7 +278,7 @@ public class AwesomemxGraph extends mxGraph {
 				}
 
 				if(sourceNode != null){
-					sourceNode.addCommand(ci.getDirection().toLowerCase().equals("in"), ci.getName(), type);
+					sourceNode.addCommand(ci.getDirection().toLowerCase().equals("in"), ci.getName(), type, ev);
 				}
 
 				for(int j=0;j<ci.getNumParamInfo();j++){
@@ -404,7 +394,34 @@ public class AwesomemxGraph extends mxGraph {
 
 	}
 
-	public class CellConnection{
+    private void parseAndAddCommands(Node node, String palcomServiceId, PRDAssemblyVer version) {
+        EventHandlerList events = version.getEventHandlerScript().getEventHandlers();
+
+        for(int i = 0;i<events.getChild(0).getNumChild();i++) {
+            String type = "ping";
+            ASTNode event = events.getChild(0).getChild(i);
+            if (event instanceof EventHandlerClause) {
+                EventHandlerClause ehc = (EventHandlerClause) event;
+                CommandEvent ev = (CommandEvent)ehc.getEvent();
+
+                String sourceId = ev.getServiceExp().getIdentifier().getID();
+                String sourceCommand = ev.getCommandName();
+
+                CommandInfo ci = ev.getCommandInfo();
+                for(int j =0;j<ci.getNumParamInfo();j++){
+                    ParamInfo pinfo = ci.getParamInfo(j);
+                    type = pinfo.getType();
+                    break;
+                }
+                if(sourceId.equalsIgnoreCase(palcomServiceId)){
+                    node.addCommand(ci.isResponse(),sourceCommand,type, ev);
+                }
+            }
+
+        }
+    }
+
+    public class CellConnection{
 		mxCell sourceCell, targetCell;
 		public CellConnection(mxCell sourceCell, mxCell targetCell){
 			this.sourceCell = sourceCell;
