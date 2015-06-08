@@ -59,9 +59,7 @@ import ist.palcom.xml.XMLFactory;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
-import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -72,7 +70,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -84,9 +81,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.DropMode;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
@@ -99,7 +94,6 @@ import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
-import javax.swing.TransferHandler;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -111,7 +105,6 @@ import javax.swing.tree.TreePath;
 import se.lth.cs.palcom.assembly.AssemblyLoadException;
 import se.lth.cs.palcom.assembly.DefaultAssemblyManager;
 import se.lth.cs.palcom.assembly.OldschoolAssemblyLoader;
-import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
 import se.lth.cs.palcom.browsergui.dnd.CommandWrapper;
 import se.lth.cs.palcom.browsergui.dnd.DNDResourceWrapper;
 import se.lth.cs.palcom.browsergui.dnd.ResourceTransferable;
@@ -125,7 +118,6 @@ import se.lth.cs.palcom.discovery.proxy.PalcomDevice;
 import se.lth.cs.palcom.discovery.proxy.PalcomService;
 import se.lth.cs.palcom.discovery.proxy.Resource;
 import se.lth.cs.palcom.discovery.proxy.ResourceListener;
-import se.lth.cs.palcom.io.FileSystem;
 import se.lth.cs.palcom.logging.Logger;
 import EDU.oswego.cs.dl.util.concurrent.Executor;
 import EDU.oswego.cs.dl.util.concurrent.ThreadedExecutor;
@@ -209,7 +201,7 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 		xmlText.addKeyListener(this);
 		
 		xmlText.setText(assemblyData);
-		assemblyGraph.setGraph(assemblyData, graphData);
+		assemblyGraph.setGraph(assemblyData, graphData, app, filename);
 		
 		tabs.add(TAB_NAME_XML, new JScrollPane(xmlText));
 		add(tabs);
@@ -1556,7 +1548,8 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 						Iterator it = baid.getUseMap().values().iterator();
 						for (int i = 0; it.hasNext(); ++i ) {
 							Use u = (Use) it.next();
-							if (u == null) {
+                            System.out.println(u);
+                            if (u == null) {
 								return;
 							}
 	
@@ -1667,8 +1660,12 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 		} else if(prevTab.equals(TAB_NAME_EDITOR)){
 			assemblyData = assemblyRoot.writeXML();
 		} else if(prevTab.equals(TAB_NAME_GRAPH)){
-			assemblyData = assemblyGraph.getXML();
-			graphData = assemblyGraph.getUpdatedGraphData();
+            try {
+                assemblyData = assemblyGraph.getXML();
+            } catch (CloneNotSupportedException e) {
+                e.printStackTrace();
+            }
+            graphData = assemblyGraph.getUpdatedGraphData();
 		}
 		
 		xmlText.setText(assemblyData);
@@ -1679,7 +1676,7 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 			e.printStackTrace();
 		}
 		if(tabName.equals(TAB_NAME_GRAPH)){
-			assemblyGraph.setGraph(assemblyData, graphData);
+			assemblyGraph.setGraph(assemblyData, graphData, application, filename);
 		}
 		prevTab = tabName;
 	}

@@ -160,7 +160,7 @@ public class AwesomemxGraph extends mxGraph {
 						p = new Point(150, topPos);
 						topPos+=100;
 					}
-                    GraphDevice gd = ge.createGraphDevice(identifier, p, true, did, "device",dd.toString());
+                    GraphDevice gd = ge.createGraphDevice(identifier, p, true, did, "device",dd);
 
 					devices.put(identifier, gd);
 				}
@@ -186,8 +186,9 @@ public class AwesomemxGraph extends mxGraph {
                     serviceNodes.put(palcomServiceId, node);
                     if(gd.disconnected){
                         ge.updateServiceId(palcomServiceId);
-                        System.out.println("Scanning commands from disconnectd device: " + gd.name + " - " + gd.disconnected);
+//                        System.out.println("Scanning commands from disconnectd device: " + gd.name + " - " + gd.disconnected);
                         parseAndAddCommands(node, palcomServiceId, version);
+
                     }else{
                         //TODO, show all commands for node???
                     }
@@ -261,137 +262,73 @@ public class AwesomemxGraph extends mxGraph {
 				CommandEvent ev = (CommandEvent)ehc.getEvent();
 
 				String sourceId = ev.getServiceExp().getIdentifier().getID();
-				String sourceCommand = ev.getCommandName();
-				String paramId = null, paramType = null;
+				String paramId = null;
 				CommandInfo ci = ev.getCommandInfo();
 
 				for(int j =0;j<ci.getNumParamInfo();j++){
-					ParamInfo pinfo = ci.getParamInfo(j);
-					type = pinfo.getType();
+					type = ci.getParamInfo(j).getType();
 					break;
 				}
-				Node sourceNode;
-				if(ev.getServiceExp() instanceof SynthesizedServiceUse){
-					sourceNode = synthServices.get(sourceId);
-				}else{
-					sourceNode = serviceNodes.get(sourceId);
-				}
 
-				if(sourceNode != null){
-					sourceNode.addCommand(ci.getDirection().toLowerCase().equals("in"), ci.getName(), type, ev);
-				}
+				Node sourceNode = (ev.getServiceExp() instanceof SynthesizedServiceUse)?synthServices.get(sourceId):serviceNodes.get(sourceId);
+				if(sourceNode != null)
+                    sourceNode.addOutCommand(ci.getName(), type, ev);
+
+                mxCell sourceCell = sourceNode.getCommandCell(ev.getCommandName());
 
 				for(int j=0;j<ci.getNumParamInfo();j++){
 					ParamInfo pi = ci.getParamInfo(j);
 					paramId = pi.getID();
-					paramType = pi.getType();
 					//TODO, kan det finnas flera parametrar i en event clause?
-					// i så fall måste paramId sparas undan i en array
 				}
 
 				for (int j = 0; j < ehc.getNumAction(); ++j) {
 					Action act = ehc.getAction(j);
-					if (act instanceof SendMessageAction) {
-						SendMessageAction sma = (SendMessageAction)act;
-						String targetId = sma.getServiceExp().getIdentifier().getID();
-						String targetCommand = sma.getCommand();
-
-						if(sma.getNumParamValue() > 0){
-							String paramName = sma.getParamValue(0).getName();
-
-							mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
-							GraphVariable gv = ge.getVariableCell(paramName);
-							mxCell targetCell = gv.getVar;
-							if(sourceCell != null && targetCell != null){
-								cellConnections.add(new CellConnection(sourceCell, targetCell));
-							}
-
-							sourceCell = gv.getOut;
-							targetCell = serviceNodes.get(targetId).getCommandCell(targetCommand);
-							if(sourceCell != null && targetCell != null){
-								cellConnections.add(new CellConnection(sourceCell, targetCell));
-							}
-						}else{
-							mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
-							mxCell targetCell = serviceNodes.get(targetId).getCommandCell(targetCommand);
-							if(sourceCell != null && targetCell != null){
-								cellConnections.add(new CellConnection(sourceCell, targetCell));
-							}
-						}
-
-
-
-
-					} else if (act instanceof InvokeAction) {
-						InvokeAction ia = (InvokeAction)act;
-						String targetCommand = ia.getCommand();
-						Node targetNode = synthServices.get( ia.getSynthesizedServiceUse().getIdentifier().getID());
-
-						if(ia.getNumParamValue() > 0){
-							String paramName = ia.getParamValue(0).getName();
-
-							if(paramName.equalsIgnoreCase(paramId)){
-								mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
-								mxCell targetCell = targetNode.getCommandCell(targetCommand);
-								if (sourceCell != null && targetCell != null){
-									cellConnections.add(new CellConnection(sourceCell, targetCell));
-								}
-							}else{
-								mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
-								GraphVariable gv = ge.getVariableCell(paramName);
-								mxCell targetCell = gv.getVar;
-								if(sourceCell != null && targetCell != null){
-									cellConnections.add(new CellConnection(sourceCell, targetCell));
-								}
-
-								sourceCell = gv.getOut;
-								targetCell = targetNode.getCommandCell(targetCommand);
-								if(sourceCell != null && targetCell != null){
-									cellConnections.add(new CellConnection(sourceCell, targetCell));
-								}
-							}
-						}else{
-							mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
-							mxCell targetCell = targetNode.getCommandCell(targetCommand);
-							if (sourceCell != null && targetCell != null){
-								cellConnections.add(new CellConnection(sourceCell, targetCell));
-							}
-						}
-
-					} else if (act instanceof AssignAction) {
-						AssignAction aa = (AssignAction)act;
+                    mxCell targetCell = null;
+                    if (act instanceof AssignAction) {
+                        AssignAction aa = (AssignAction)act;
 						String varName = aa.getVariableUse().getName();
 						if(aa.getParamUse().getName().equalsIgnoreCase(paramId)){
-							mxCell sourceCell = sourceNode.getCommandCell(sourceCommand);
 							GraphVariable gv = ge.getVariableCell(varName);
 							if(gv != null){
-								mxCell targetCell = gv.setVar;
-								if(targetCell != null){
-									cellConnections.add(new CellConnection(sourceCell, targetCell));
-								}
+								targetCell = gv.setVar;
 							}
 						}
-					}
+					}else{
+                        ActionWithParams awp = (ActionWithParams) act;
+                        String targetCommand = awp.getCommand();
+                        Node targetNode = null;
+                        if(act instanceof SendMessageAction){
+                            targetNode = serviceNodes.get(((SendMessageAction) act).getServiceExp().getIdentifier().getID());
+                        }else if(act instanceof InvokeAction){
+                            targetNode = synthServices.get(((InvokeAction)act).getSynthesizedServiceUse().getIdentifier().getID());
+                        }
+                        if(targetNode != null){
+                            if(awp.getNumParamValue() > 0 && !(awp.getParamValue(0) instanceof  ParamUse)){
+                                String paramName = awp.getParamValue(0).getName();
+                                if (awp.getParamValue(0) instanceof VariableUse){
+                                    GraphVariable gv = ge.getVariableCell(paramName);
+                                    mxCell tempTarget = targetNode.getCommandCell(targetCommand);
+                                    mxCell tempSource = gv.getOut;
+                                    if(tempTarget != null && tempSource != null){
+                                        cellConnections.add(new CellConnection(tempSource, tempTarget));
+                                    }
+                                    targetCell = gv.getVar;
+                                }
+                            }else{
+                                targetCell = targetNode.getCommandCell(targetCommand);
+                            }
+                        }
+                    }
+                    if(sourceCell != null && targetCell != null){
+                        cellConnections.add(new CellConnection(sourceCell, targetCell));
+                    }
 				}
 			}
 		}
-
-
-
-
-
-		// TODO, add connections
 		for(CellConnection cc:cellConnections){
 			ge.addCellConnection(cc);
 		}
-//			for(Connection c:messageEvents){
-//				ge.addConnection(c.sourceNode,c.sourceCommand,c.targetNode,c.targetCommand);
-//			}
-//			for(VarConnection vc:variableAssignments){
-//				ge.addSetVariableConnection(vc.sourceNode, vc.sourceCommand, vc.varName);
-//			}
-
-
 	}
 
     private void parseAndAddCommands(Node node, String palcomServiceId, PRDAssemblyVer version) {
@@ -414,7 +351,28 @@ public class AwesomemxGraph extends mxGraph {
                     break;
                 }
                 if(sourceId.equalsIgnoreCase(palcomServiceId)){
-                    node.addCommand(ci.isResponse(),sourceCommand,type, ev);
+                    node.addOutCommand(sourceCommand, type, ev);
+                }
+
+                for (int j = 0; j < ehc.getNumAction(); ++j) {
+                    Action act = ehc.getAction(j);
+                    if (act instanceof SendMessageAction) {
+                        SendMessageAction sma = (SendMessageAction)act;
+                        String targetId = sma.getServiceExp().getIdentifier().getID();
+                        String targetCommand = sma.getCommand();
+
+                        if(targetId.equalsIgnoreCase(palcomServiceId)){
+                            type = "ping";
+
+                            if(sma.getNumParamValue() > 0){
+                                String paramName = sma.getParamValue(0).getName();
+                                GraphVariable gv = ge.getVariableCell(paramName);
+                                type = ((MimeType)gv.variable.getVariableType()).getTypeName();
+                            }
+
+                            node.addInCommand(targetCommand, type, sma);
+                        }
+                    }
                 }
             }
 
@@ -428,26 +386,6 @@ public class AwesomemxGraph extends mxGraph {
 			this.targetCell = targetCell;
 		}
 	}
-//
-//	private class VarConnection{
-//		Node sourceNode;
-//		String sourceCommand, varName;
-//		public VarConnection(Node sourceNode, String sourceCommand, String varName){
-//			this.sourceCommand = sourceCommand;
-//			this.sourceNode = sourceNode;
-//			this.varName = varName;
-//		}
-//	}
-//	private class Connection{
-//		Node sourceNode, targetNode;
-//		String sourceCommand, targetCommand;
-//		public Connection(Node sourceNode, String sourceCommand, Node targetNode, String targetCommand){
-//			this.sourceCommand = sourceCommand;
-//			this.sourceNode = sourceNode;
-//			this.targetCommand = targetCommand;
-//			this.targetNode = targetNode;
-//		}
-//	}
 	private void xmlGoTo(XmlPullParser factory, String tagName) throws XmlPullParserException, IOException{
 		while(!factory.getName().equals(tagName)){
 			factory.nextTag();

@@ -34,6 +34,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.UserDataHandler;
 import se.lth.cs.palcom.assembly.AssemblyLoadException;
 import se.lth.cs.palcom.browsergui.AssemblyPanel;
+import se.lth.cs.palcom.browsergui.BrowserApplication;
 import se.lth.cs.palcom.browsergui.dnd.AssemblyGraphTransferHandler;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Command;
 import se.lth.cs.palcom.browsergui.views.GraphDevice.Node;
@@ -83,10 +84,15 @@ public class GraphEditor extends JPanel {
 	public Document xmlDocument;
 	public TreeMap<String,String> usedColors;
 	public ArrayList<String> availableColors;
+    public TreeMap<String, CommandEvent> graphCommandEvents;
+    public TreeMap<String, ActionEvent> graphActionEvents;
+    public TreeMap<String, Command> graphCommands;
 
 	private int nextServiceId = 1;
+    private BrowserApplication app;
+    private String filename;
 
-	public String getNextServiceId(){
+    public String getNextServiceId(){
 		return "s" + nextServiceId++;
 	}
 	public void updateServiceId(String serviceId){
@@ -150,6 +156,9 @@ public class GraphEditor extends JPanel {
 		graphVariables = new TreeMap<String, GraphVariable>();
 		gDV = new GraphDeviceView(this);
 		usedColors = new TreeMap<String, String>();
+        graphCommandEvents = new TreeMap<String, CommandEvent>();
+        graphActionEvents = new TreeMap<String, ActionEvent>();
+        graphCommands = new TreeMap<String, Command>();
 		availableColors = new ArrayList<String>();
 		availableColors.add("#F44336");
 		availableColors.add("#E91E63");
@@ -338,7 +347,6 @@ public class GraphEditor extends JPanel {
 		if(n.palcomServiceId == null && !gd.type.equalsIgnoreCase("synthesizedservice")){
 			String newServiceId = getNextServiceId();
 			n.palcomServiceId = newServiceId;
-			System.out.println("Generating id for: " + name + " - " +gd.id+ " - " + newServiceId);
 		}
 		
 		mxCell nodeCell = (mxCell) graph.insertVertex(gd.cell, null, name, 0, 0, 150, n.getHeight(),"fillColor=none");
@@ -384,17 +392,16 @@ public class GraphEditor extends JPanel {
 
 			Element elem = xmlDocument.createElement(reduceTypeName(c.type) + typeExtenstion);
 			elem.setAttribute("name", c.name);
-            elem.setUserData("command", c, null);
-
-
 
 			mxCell port = new mxCell(elem, outGeo,css + "fillColor="+color);
 
-			c.commandCell = port;
 
-			port.setVertex(true);
-			graph.addCell(port, parent);
-		}
+            c.commandCell = port;
+
+            port.setVertex(true);
+            graph.addCell(port, parent);
+            graphCommands.put(port.getId(), c);
+        }
 	}
 
 	public boolean addDevice(DeviceProxy d) {
@@ -404,64 +411,72 @@ public class GraphEditor extends JPanel {
 		return devices.add(d);
 	}
 
-	public String getXML() {
-		System.out.println("----Getting XML");
+	public String getXML() throws CloneNotSupportedException {
+        int connectionId = 0;
+        PRDAssemblyVer version = new PRDAssemblyVer();
+        version.setFormat("3.0.14");
+        DeviceID did = app.getDevice().getDeviceID();
+        version.setName(filename);
+        version.setVersion(new AssemblyID(new VersionPart(did, "Version"), new VersionPart(did, "Version?"), new Opt(), new Opt(), "1.0"));
+
+        DeviceDeclList devices = new DeviceDeclList();
+        ServiceDeclList services = new ServiceDeclList();
+        ConnectionDeclList connections = new ConnectionDeclList();
+        EventHandlerScript eventHandler = new EventHandlerScript();
+        VariableList variables = new VariableList();
+        EventHandlerList events = new EventHandlerList();
+        SynthesizedServiceList synthServices = new SynthesizedServiceList();
+
+        for(ServiceObjGUI ssObj : ssList){
+            synthServices.addSynthesizedService(ssObj.ss);
+        }
+        for(VariableObjGUI varObj : variableList){
+            variables.addVariableDecl(varObj.var);
+        }
+
 		for(String graphId:graphDevices.keySet()){
 			GraphDevice gd = graphDevices.get(graphId);
 			if(!gd.type.equalsIgnoreCase("synthesizedservice")){
-//				System.out.println("Device:");
-//				System.out.println(gd.xml);
-
-
+                devices.addDeviceDecl(gd.xml);
                 for(Node node:gd.getUsedServices()){
                     ServiceUse su = new ServiceUse(new Identifier(node.palcomServiceId));
-
                     ServiceDecl decl = new ServiceDecl(new Identifier(node.palcomServiceId), node.asd);
-
-//					System.out.println(decl);
-
+                    services.addServiceDecl(decl);
+                    boolean serviceHasConn = false;
 					for(Command c:node.outCommands){
-						if(c.commandCell != null){
+
+                        if(c.commandCell != null){
+                            EventHandlerClause ehc = new EventHandlerClause();
+
                             Object[] edges = graph.getEdges(c.commandCell);
                             CommandEvent ce = c.ce;
                             ce.setServiceExp(su);
 
+                            ehc.setEvent(ce);
 
+                            if(!serviceHasConn && edges.length > 0){
+                                ConnectionDecl conn = new ConnectionDecl(su, new ThisService(), "conn-" + (++connectionId),  new Opt());
+                                connections.addConnectionDecl(conn);
+                                serviceHasConn = true;
+                            }
+                            ArrayList<Action> actions = new ArrayList<Action>();
+
+                            CommandInfo ci = ce.getCommandInfo();
+                            String paramName = null;
+                            for(int j =0;j<ci.getNumParamInfo();j++){
+                                paramName = ci.getParamInfo(j).getID();
+                                break;
+                            }
                             for(int i=0;i<edges.length;i++){
-                                // TODO, Service skall ha en connection nu
                                 mxCell target = (mxCell)((mxCell) edges[i]).getTarget();
-
-
-                                System.out.println("Edge from: " +c.name + " to: " + target.getAttribute("name"));
-
-
-                                mxCell targetParent = getTopParentCell(target);
-
-                                GraphDevice targetDev = graphDevices.get(targetParent.getId());
-                                GraphVariable targetVar = graphVariables.get(targetParent.getId());
-
-                                if(targetDev != null){
-                                    List params = new List();
-                                    //TODO parameter lista
-
-                                    Element e = (Element) target.getValue();
-                                    Command targetCommand = (Command) e.getUserData("command");
-
-                                    if(targetDev.type.equalsIgnoreCase("synthesizedservice")){
-                                        InvokeAction act = new InvokeAction(targetCommand.ce.getCommandName(), params, new SynthesizedServiceUse(new Identifier(targetDev.id)), "ToAll", new Opt(), new Opt());
-                                    }else{
-                                        SendMessageAction act = new SendMessageAction(targetCommand.ce.getCommandName(), params, su);
-                                    }
-                                }else if(targetVar != null) {
-                                    if(c.commandCell.getAttribute("name").equalsIgnoreCase("set variable")){
-                                        // TODO, set variable
-                                        System.out.println("Set var");
-                                    }else{
-                                        System.out.println("get var");
-                                        // TODO, get variable
-                                        // get output from var aswell
-                                    }
-                                }
+                                System.out.println("Edge from: " + c.name + " to: " + target.getAttribute("name"));
+                                actions.addAll(getTargetActions(target, paramName, null));
+                            }
+                            for(Action a:actions){
+                                ehc.addAction(a);
+                            }
+                            if(actions.size() > 0){
+                                events.addEventHandlerClause(ehc);
                             }
 
 						}else{
@@ -470,26 +485,91 @@ public class GraphEditor extends JPanel {
 					}
 				}
 			}else{
-                //TODO
-
-//            ServiceUse su = new ServiceUse(new Identifier(parent.palcomServiceId));
-
-
-//            CommandEvent ce = new CommandEvent(sscw.command.getID(), new SynthesizedServiceUse(new Identifier(sscw.getId())), new Opt(sscw.command));
-
+                for(Node node:gd.getUsedServices()){
+                    for(Command c:node.outCommands){
+                        if(c.commandCell != null){
+                            EventHandlerClause ehc = new EventHandlerClause();
+                            Object[] edges = graph.getEdges(c.commandCell);
+                            CommandEvent ce = c.ce;
+                            ce.setServiceExp(new SynthesizedServiceUse(new Identifier(gd.id)));
+                            ehc.setEvent(ce);
+                            ArrayList<Action> actions = new ArrayList<Action>();
+                            CommandInfo ci = ce.getCommandInfo();
+                            String paramName = null;
+                            for(int j =0;j<ci.getNumParamInfo();j++){
+                                paramName = ci.getParamInfo(j).getID();
+                                break;
+                            }
+                            for(int i=0;i<edges.length;i++){
+                                mxCell target = (mxCell)((mxCell) edges[i]).getTarget();
+                                actions.addAll(getTargetActions(target, paramName, null));
+                            }
+                            for(Action a:actions){
+                                ehc.addAction(a);
+                            }
+                            if(actions.size() > 0){
+                                events.addEventHandlerClause(ehc);
+                            }
+                        }else{
+                            System.out.println("Commandcell is null: " + c.getName());
+                        }
+                    }
+                }
             }
 		}
-		for(ServiceObjGUI ssObj : ssList){
-//			System.out.println("SynthenizedService:");
-//			System.out.println(ssObj.ss);
-		}
+        eventHandler.setEventHandlers(events);
+        eventHandler.setVariables(variables);
+        version.setDevices(devices);
+        version.setServices(services);
+        version.setConnections(connections);
+        version.setEventHandlerScript(eventHandler);
+        version.setSynthesizedServices(synthServices);
+        System.out.println("Bam bam bammmmm");
 
-		for(VariableObjGUI varObj : variableList){
-//			System.out.println("Variable:");
-//			System.out.println(varObj.var);
-		}
-		return assemblyData;
+        System.out.println(version);
+
+        return version.toString();
 	}
+
+    private ArrayList<Action> getTargetActions(mxCell target, String paramName, String variableName) throws CloneNotSupportedException {
+        ArrayList<Action> actions = new ArrayList<Action>();
+        List params = new List();
+        if(paramName != null){
+            params.add(new ParamUse(paramName));
+        }
+        if(variableName != null){
+            params.add(new VariableUse(variableName));
+        }
+
+        Command targetCommand = graphCommands.get(target.getId());
+        GraphVariable targetVar = graphVariables.get(getTopParentCell(target).getId());
+        if(targetVar != null){
+            if(target.getAttribute("name").equalsIgnoreCase("set variable")){
+                AssignAction aa = new AssignAction(new VariableUse(targetVar.variable.getIdentifier().getID()), new ParamUse(paramName));
+                actions.add(aa);
+            }else{
+                Object[] edges = graph.getEdges(targetVar.getOut);
+                for(int i=0;i<edges.length;i++){
+                    mxCell varTarget = (mxCell)((mxCell) edges[i]).getTarget();
+                    actions.addAll(getTargetActions(varTarget, null, targetVar.variable.getIdentifier().getID()));
+                }
+            }
+        }else if(targetCommand != null && targetCommand.awp != null){
+            String actionName = targetCommand.awp.getCommand();
+            if (targetCommand.awp instanceof SendMessageAction){
+                SendMessageAction sma = new SendMessageAction(actionName, params, new ServiceUse(new Identifier(targetCommand.parent.palcomServiceId)));
+                actions.add(sma);
+            }else if(targetCommand.awp instanceof InvokeAction){
+                InvokeAction ia = new InvokeAction(actionName, params, ((InvokeAction) targetCommand.awp).getSynthesizedServiceUse(), "", new Opt(), new Opt());
+                actions.add(ia);
+            }
+        }else{
+            System.out.println("Commandevent ActionWithParam is null, is it not a recieving command?");
+        }
+
+
+        return actions;
+    }
 
     private mxCell getTopParentCell(mxCell cell){
         if(cell.getParent().getId().equalsIgnoreCase("1")){
@@ -499,9 +579,10 @@ public class GraphEditor extends JPanel {
         }
     }
 
-	public void setGraph(String assemblyData, GraphObjectsHandler graphData) {
+	public void setGraph(String assemblyData, GraphObjectsHandler graphData, BrowserApplication app, String filename) {
 		this.assemblyData = assemblyData;
-
+        this.app = app;
+        this.filename = filename;
 
 		try {
 			graph.updateGraphWithData(discoveryManager.getNetwork(), assemblyData, graphData, this);
@@ -567,12 +648,12 @@ public class GraphEditor extends JPanel {
 		PalcomDevice dev = (PalcomDevice)data;
 		DeviceDecl decl = new DeviceAddressDecl(new Identifier(dev.getName()), new DeviceAddress(dev.getDeviceID()));
 
-		GraphDevice gd = createGraphDevice(data.getName(), p, false, data.getDeviceID().toString(), "device", decl.toString());
+		GraphDevice gd = createGraphDevice(data.getName(), p, false, data.getDeviceID().toString(), "device", decl);
 
 		PalcomServiceList services = data.getServiceList();
 
 		for (int i = 0; i < services.getNumService(); i++) {
-			recrusiveGetServices(null, gd, services.getService(i));
+			recrusiveGetServices(null, gd, services.getService(i), false);
 		}
 
 		return gd;
@@ -581,10 +662,10 @@ public class GraphEditor extends JPanel {
 	public GraphDevice importDevice(Point p, SynthesizedService data) throws ResourceException {
 		PRDServiceFMDescription prds = data.getPRDServiceFMDescription();
 
-		GraphDevice gd = createGraphDevice(prds.getID(), p, false, prds.getID(), "synthesizedservice", data.toString());
+		GraphDevice gd = createGraphDevice(prds.getID(), p, false, prds.getID(), "synthesizedservice", null);
 		Node parent = gd.addNode(null, NodeType.SERVICE, prds.getID(),null,null);
 
-		parseCommands(parent, prds);
+		parseCommands(parent, prds, true);
 		showService(gd, prds.getID());
 		
 		return gd;
@@ -632,7 +713,7 @@ public class GraphEditor extends JPanel {
 		graphVariables.put(cell.getId(), new GraphVariable(variable, cell, port1, port2, port3));
 	}
 
-	public GraphDevice createGraphDevice(String name, Point p, boolean disconnected, String id, String type, String xml){
+	public GraphDevice createGraphDevice(String name, Point p, boolean disconnected, String id, String type, DeviceDecl xml){
 		String bgType = type.equalsIgnoreCase("synthesizedservice") ? "#c4dcff" : "#99CCFF";
 		String bg = disconnected? "#A0A0A0" : bgType;
 		
@@ -646,17 +727,17 @@ public class GraphEditor extends JPanel {
 		return gd;
 	}
 	
-	private void parseCommands(Node parent, PRDServiceFMDescription prds){
+	private void parseCommands(Node parent, PRDServiceFMDescription prds, boolean isSynthesized){
 		if(prds != null){
 			for(int i =0;i<prds.getNumControlInfo();i++){
-				recursiveGetCommands(parent, prds.getControlInfo(i));
+				recursiveGetCommands(parent, prds.getControlInfo(i), isSynthesized);
 			}
 		}else{
 			System.out.println("prds is null, is device description not synced yet?");
 		}
 	}
 	
-	private void recursiveGetCommands(Node parent, ControlInfo ci){
+	private void recursiveGetCommands(Node parent, ControlInfo ci, boolean isSynthesized){
 		if(ci instanceof CommandInfo){
 			CommandInfo comI = (CommandInfo) ci;
 			String name = comI.getID();
@@ -676,20 +757,28 @@ public class GraphEditor extends JPanel {
 					}
 				}
 			}
-            CommandEvent ce = new CommandEvent(comI.getID(), null, new Opt(comI));
-            parent.addCommand(isIn, name, type, ce);
+            if(isIn){
+                ActionWithParams awp;
+                if(isSynthesized){
+                    awp = new InvokeAction(name, new List(), new SynthesizedServiceUse(new Identifier(parent.name)), "", new Opt(), new Opt());
+                }else{
+                    awp = new SendMessageAction(name, new List(), null);
+                }
+                parent.addInCommand(name, type, awp);
+            }else{
+                CommandEvent ce = new CommandEvent(comI.getID(), null, new Opt(comI));
+                parent.addOutCommand(name, type, ce);
+            }
         }else if(ci instanceof GroupInfo){
 			GroupInfo gi = (GroupInfo) ci;
 			for(int i=0;i<gi.getNumControlInfo();i++){
-				recursiveGetCommands(parent, gi.getControlInfo(i));
+				recursiveGetCommands(parent, gi.getControlInfo(i),isSynthesized);
 			}
 		}
 	}
 	
-	private void recrusiveGetServices(Node parent, GraphDevice gd, PalcomServiceListPart psp) throws ResourceException {
+	private void recrusiveGetServices(Node parent, GraphDevice gd, PalcomServiceListPart psp, boolean isSynthesized) throws ResourceException {
 		if (psp instanceof ServiceProxy) {
-
-
 			PalcomService ps = (PalcomService) psp;
 			String serviceName = "Unknown";
 			try {
@@ -708,13 +797,13 @@ public class GraphEditor extends JPanel {
 			if(psd instanceof PalcomControlServiceDescription){
 				PalcomControlServiceDescription pcsd = (PalcomControlServiceDescription) psd;
 				PRDServiceFMDescription psfmd = pcsd.getPRDServiceFMDescription();
-				parseCommands(node, psfmd);
+				parseCommands(node, psfmd, isSynthesized);
 			}
 		} else if (psp instanceof ServiceListProxy) {
 			ServiceListProxy slp = (ServiceListProxy) psp;
 			Node newParent = gd.addNode(parent, NodeType.SERVICELIST, slp.getName(),null,null);
 			for (int i = 0; i < slp.getNumService(); i++) {
-				recrusiveGetServices(newParent, gd, slp.getService(i));
+				recrusiveGetServices(newParent, gd, slp.getService(i), isSynthesized);
 			}
 		}
 	}
@@ -745,6 +834,8 @@ public class GraphEditor extends JPanel {
 
 	public void addCellConnection(AwesomemxGraph.CellConnection cc) {
 		Object parent = graph.getDefaultParent();
-		graph.insertEdge(parent, null, "", cc.sourceCell, cc.targetCell);
-	}
+        if(graph.getEdgesBetween(cc.sourceCell, cc.targetCell).length == 0){
+            graph.insertEdge(parent, null, "", cc.sourceCell, cc.targetCell);
+        }
+    }
 }

@@ -1,12 +1,11 @@
 package se.lth.cs.palcom.browsergui.views;
 
+import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
-import ist.palcom.resource.descriptor.AbstractServiceDecl;
-import ist.palcom.resource.descriptor.CommandEvent;
-import ist.palcom.resource.descriptor.ServiceDecl;
+import ist.palcom.resource.descriptor.*;
 import se.lth.cs.palcom.discovery.proxy.PalcomService;
 
 public class GraphDevice implements Comparable {
@@ -16,7 +15,7 @@ public class GraphDevice implements Comparable {
 	public static mxGeometry geo2 = new mxGeometry(1.0, 0.5, PORT_DIAMETER,PORT_DIAMETER);
 
 	public final static int DEFAULT_HEIGHT = 40;
-	final String xml;
+	final DeviceDecl xml;
 	String name;
 	Node root;
 	int height;
@@ -28,7 +27,7 @@ public class GraphDevice implements Comparable {
 
 	private ArrayList<mxCell> createdCells;
 
-	public GraphDevice(mxCell cell, mxCell add, boolean disconnected, String id, String type, String xml, String name){
+	public GraphDevice(mxCell cell, mxCell add, boolean disconnected, String id, String type, DeviceDecl xml, String name){
 		this.cell = cell;
 		this.add = add;
 		this.disconnected = disconnected;
@@ -146,20 +145,31 @@ public class GraphDevice implements Comparable {
 		}
 	}
 
-	public class Command{
+	public class Command {
         CommandEvent ce;
+        ActionWithParams awp;
         boolean in;
 		String name;
 		String type;
 		mxCell commandCell;
+        Node parent;
 
-		public Command(boolean in, String name, String type, CommandEvent ce){
-			this.in = in;
+		public Command(String name, String type, CommandEvent ce, Node parent){
+            this.parent = parent;
+            this.in = false;
 			this.name = name;
 			this.type = type;
             this.ce = ce;
 		}
-		
+
+        public Command(String name, String type, ActionWithParams awp, Node parent){
+            this.parent = parent;
+            this.in = true;
+            this.name = name;
+            this.type = type;
+            this.awp = awp;
+        }
+
 		String getName(){
 			return name;
 		}
@@ -202,14 +212,13 @@ public class GraphDevice implements Comparable {
 			children.add(new Node(nt, name, palcomServiceId, asd));
 		}
 		
-		public void addCommand(boolean in, String name, String type, CommandEvent ce){
-			if(in){
-				inCommands.add(new Command(in, name, type, ce));
-			}else{
-				outCommands.add(new Command(in, name, type, ce));
-			}
+		public void addInCommand(String name, String type, ActionWithParams ce){
+            inCommands.add(new Command(name, type, ce, this));
 		}
-		
+        public void addOutCommand(String name, String type, CommandEvent ae){
+            outCommands.add(new Command(name, type, ae, this));
+        }
+
 		public ArrayList<Command> getInCommands(){
 			return inCommands;
 		}
