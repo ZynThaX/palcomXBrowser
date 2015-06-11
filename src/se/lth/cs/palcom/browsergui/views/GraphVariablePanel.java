@@ -72,7 +72,6 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 		
 		leftPanel = new JPanel();
 		JScrollPane leftScroll = new JScrollPane(leftPanel);
-//		leftScroll.setBorder(null);
 		leftPanel.setBackground(Color.white);
 		leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
 		
@@ -101,9 +100,7 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 		rightPanel.add(rightScroll);
 		rightPanel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createBevelBorder(1), BorderFactory.createEmptyBorder(5, 10, 5, 10)));
 		JButton createVarBtn = new JButton("Create variable");
-		//rightPanel.add(variableListPanel, BorderLayout.WEST);
-		//rightPanel.add(createVarBtn, BorderLayout.EAST);
-		
+
 		createVarBtn.addActionListener(new ActionListener() {
 
 			public void actionPerformed(ActionEvent e) {
@@ -135,9 +132,7 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 		}
 	}
 	
-	
-	//private final TwoStringsDialog twoStringsDialog = new TwoStringsDialog();
-	
+
 
 	public void mouseClicked(MouseEvent me) {}
 	public void mouseEntered(MouseEvent me) {}
@@ -151,15 +146,7 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 	
 	private void doPopup(MouseEvent me) {
 		if (me.isPopupTrigger()) {
-//			TreePath selectionPath = assemblyTree.getPathForLocation(me.getX(), me.getY());
-//			if (selectionPath == null) {
-//				return;
-//			}
-//			assemblyTree.setSelectionPath(selectionPath);
-//			TreeNode node = (TreeNode) selectionPath.getLastPathComponent();
-//			if (node instanceof AssemblyTreeNode) {
-//				((AssemblyTreeNode)node).showContextMenu(me.getX(), me.getY());
-//			}
+
 		}
 	}
 	
@@ -185,28 +172,22 @@ public class GraphVariablePanel extends JPanel implements ActionListener{
 	
 	public void actionPerformed(ActionEvent e) {
 		String cmd = e.getActionCommand();
-		//final TreeNode node = (TreeNode) tree.getSelectionPath().getLastPathComponent();
 		if (cmd.equals("removeVariable")) {
 			RemoveSSMenu rm = (RemoveSSMenu) ((JMenuItem)e.getSource()).getParent();
-			//removeService(rm.ss);
 		} else if(cmd.equals("AddVarOk")){
 			AddVariableDialog window = (AddVariableDialog) SwingUtilities.windowForComponent((JButton)e.getSource());
 			window.dispose();
 			VariableDecl dec = new VariableDecl(new MimeType(window.getAssemblyType()), new Identifier(window.getName()));
 			addVariable(dec);
-//			System.out.println(dec);
 		}
 	}
 	
 	public class VariableObjGUI extends JLabel implements ActionListener, DragGestureListener, DragSourceListener{
 		VariableDecl var;
 		DragSource dragSource;
-		//private final TwoStringsDialog twoStringsDialog = new TwoStringsDialog();
 		public VariableObjGUI(VariableDecl var) {
 			this.var = var;
 			this.setPreferredSize(new Dimension(130, 20));
-//			this.setSize(new Dimension(130, 20));
-//			this.setLayout(new GridLayout(0, 1));
 			Color deviceBlue = new Color(153, 153, 255);
 			this.setBackground(deviceBlue);
 			setOpaque(true);

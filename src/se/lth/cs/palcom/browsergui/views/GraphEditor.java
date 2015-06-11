@@ -1,6 +1,5 @@
 package se.lth.cs.palcom.browsergui.views;
 
-import com.mxgraph.swing.handler.mxConnectionHandler;
 import com.mxgraph.util.*;
 import internal.org.xmlpull.v1.XmlPullParserException;
 
@@ -31,7 +30,6 @@ import javax.swing.border.Border;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import org.w3c.dom.UserDataHandler;
 import se.lth.cs.palcom.assembly.AssemblyLoadException;
 import se.lth.cs.palcom.browsergui.AssemblyPanel;
 import se.lth.cs.palcom.browsergui.BrowserApplication;
@@ -91,12 +89,15 @@ public class GraphEditor extends JPanel {
 	private int nextServiceId = 1;
     private BrowserApplication app;
     private String filename;
+    protected boolean clearingRunning = false;
+    private boolean loadingAssembly=false;
 
+    private String disconnectedStrokeColor = "#616161";
     public String getNextServiceId(){
 		return "s" + nextServiceId++;
 	}
 	public void updateServiceId(String serviceId){
-		int tempServiceId = Integer.parseInt(serviceId.substring(1));
+		int tempServiceId = Integer.parseInt(serviceId.substring(1))+1;
 		if(tempServiceId > nextServiceId)
 			nextServiceId = tempServiceId;
 	}
@@ -143,7 +144,7 @@ public class GraphEditor extends JPanel {
 	}
 
 	public GraphObjectsHandler getUpdatedGraphData(){
-		return new GraphObjectsHandler(graphDevices, graphVariables);
+        return new GraphObjectsHandler(graphDevices, graphVariables);
 	}
 
 	public GraphEditor(DiscoveryManager discoveryManager, AssemblyPanel assemblyPanel){
@@ -199,70 +200,42 @@ public class GraphEditor extends JPanel {
 
 
 		graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {
-			public void mouseReleased(MouseEvent e) {
-				mxCell cell = (mxCell) graphComponent.getCellAt(e.getX(), e.getY());
-				if (cell != null && graph.getLabel(cell).equalsIgnoreCase("+")) {
-					String id = cell.getParent().getId();
-					final GraphDevice gD = graphDevices.get(id);
-					if (gD != null) {
-						JPopupMenu menu = gDV.createServiceMenu(gD.root.children, id);
-						menu.show(e.getComponent(), e.getX() - (int) menu.getPreferredSize().getWidth() / 2, e.getY());
-					}
-				} else if (cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")) {
-					JPopupMenu menu = gDV.createRemoveServiceMenu(cell);
-					menu.show(e.getComponent(), e.getX() - menu.getWidth() / 2, e.getY());
-				} else if (cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getId().equals("1")) {
-					JPopupMenu menu = gDV.createRemoveGraphDeviceMenu(cell);
-					menu.show(e.getComponent(), e.getX() - menu.getWidth() / 2, e.getY());
-				}
-			}
-		});
+            public void mouseReleased(MouseEvent e) {
+                mxCell cell = (mxCell) graphComponent.getCellAt(e.getX(), e.getY());
+                if (cell != null && graph.getLabel(cell).equalsIgnoreCase("+")) {
+                    String id = cell.getParent().getId();
+                    final GraphDevice gD = graphDevices.get(id);
+                    if (gD != null) {
+                        JPopupMenu menu = gDV.createServiceMenu(gD.root.children, id);
+                        menu.show(e.getComponent(), e.getX() - (int) menu.getPreferredSize().getWidth() / 2, e.getY());
+                    }
+                } else if (cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getParent().getId().equals("1")) {
+                    JPopupMenu menu = gDV.createRemoveServiceMenu(cell);
+                    menu.show(e.getComponent(), e.getX() - menu.getWidth() / 2, e.getY());
+                } else if (cell != null && e.getButton() == MouseEvent.BUTTON3 && !cell.getId().equals("1")) {
+                    JPopupMenu menu = gDV.createRemoveGraphDeviceMenu(cell);
+                    menu.show(e.getComponent(), e.getX() - menu.getWidth() / 2, e.getY());
+                }
+            }
+        });
 
 
-        // TODO, catcha alla händelser
-//		graphComponent.getConnectionHandler().addListener(mxEvent.CONNECT, new mxEventSource.mxIEventListener() {
-//			public void invoke(Object o, mxEventObject mxEventObject) {
-//				// connection was made
-//				mxConnectionHandler mch = (mxConnectionHandler) o;
-//				mxCell cell = (mxCell)mxEventObject.getProperties().get("cell");
-//				mxCell par = (mxCell) graph.getDefaultParent();
-//
-////				System.out.println(par.getId());
-////				System.out.println(cell.getValue() + " - " + cell.getParent().getId());
-//
-////				System.out.println();
-//				Object[] conns = graph.getConnections(cell.getSource(), par);
-//
-//				for(int i=0;i<conns.length;i++){
-//					mxCell c = (mxCell) conns[i];
-//					mxCell tar = (mxCell) c.getTarget();
-//					mxCell src = (mxCell) c.getSource();
-//
-//					System.out.println(src.getValue() + " - " + tar.getValue());
-//				}
-//			}
-//		});
-//		graphComponent.addListener(mxEvent.CELLS_MOVED, new mxEventSource.mxIEventListener() {
-//			public void invoke(Object o, mxEventObject mxEventObject) {
-//				System.out.println("Update occured");
-//			}
-//		});
-//		graphComponent.addListener(mxEvent.CELLS_MOVED, new mxEventSource.mxIEventListener() {
-//			public void invoke(Object o, mxEventObject mxEventObject) {
-//				System.out.println("Update occured");
-//			}
-//		});
+		graphComponent.getConnectionHandler().addListener(mxEvent.CONNECT, new mxEventSource.mxIEventListener() {
+            public void invoke(Object o, mxEventObject mxEventObject) {
+                setUnsaved(true);
+            }
+        });
 
-//		graphComponent.getConnectionHandler().addListener(mxEvent.MARK, new mxEventSource.mxIEventListener() {
-//			public void invoke(Object o, mxEventObject mxEventObject) {
-//				System.out.println("Change occured");
-//			}
-//		});
+
 		Map<String, Object> EdgeStyle = graph.getStylesheet().getDefaultEdgeStyle();
 	    EdgeStyle.put(mxConstants.STYLE_EDGE, mxEdgeStyle.OrthConnector);
 	    EdgeStyle.put(mxConstants.STYLE_STROKEWIDTH, 1);
 	    EdgeStyle.put(mxConstants.STYLE_ROUNDED, true);
-
+        EdgeStyle.put(mxConstants.STYLE_STROKECOLOR, "#434343");
+        EdgeStyle.put(mxConstants.STYLE_STROKEWIDTH, 2);
+        Map<String, Object> vertexStyles = graph.getStylesheet().getDefaultVertexStyle();
+        vertexStyles.put(mxConstants.STYLE_FONTCOLOR, "#000000");
+        vertexStyles.put(mxConstants.STYLE_STROKECOLOR, "#6680ff");
 
 		graph.setHtmlLabels(true);
 		graph.setAllowDanglingEdges(false);
@@ -344,18 +317,23 @@ public class GraphEditor extends JPanel {
 	public void showService(GraphDevice gd, String name) {
 		Node n = gd.displayService(name);
 
-		if(n.palcomServiceId == null && !gd.type.equalsIgnoreCase("synthesizedservice")){
+
+        if(n.palcomServiceId == null && !gd.type.equalsIgnoreCase("synthesizedservice")){
 			String newServiceId = getNextServiceId();
 			n.palcomServiceId = newServiceId;
 		}
-		
-		mxCell nodeCell = (mxCell) graph.insertVertex(gd.cell, null, name, 0, 0, 150, n.getHeight(),"fillColor=none");
+		String extraCss = "";
+        if(gd.disconnected){
+            extraCss += (";strokeColor="+disconnectedStrokeColor);
+        }
+
+		mxCell nodeCell = (mxCell) graph.insertVertex(gd.cell, null, name, 0, 0, 150, n.getHeight(),"fillColor=none"+extraCss);
 		nodeCell.setConnectable(false);
 
 
 		n.nodeCell = nodeCell;
-		
-		createPorts(n.getInCommands(), true, nodeCell);
+
+        createPorts(n.getInCommands(), true, nodeCell);
 		createPorts(n.getOutCommands(), false, nodeCell);
 
 		gd.rerender();
@@ -373,18 +351,18 @@ public class GraphEditor extends JPanel {
 	
 
 	private void createPorts(ArrayList<Command> commands, boolean isIn, mxCell parent){
-		String css = "shape=ellipse;perimter=ellipsePerimeter;align=right;spacingRight=20;portConstraint=east;";
+		String css = "shape=ellipse;perimter=ellipsePerimeter;align=right;spacingRight=20;portConstraint=east;strokeWidth=0;";
 		double xRel = 1.0;
 		String typeExtenstion = "Source";
 		if(isIn){
 			xRel = 0.0;
-			css = "shape=ellipse;perimter=ellipsePerimeter;align=left;spacingLeft=20;portConstraint=west;";
+			css = "shape=ellipse;perimter=ellipsePerimeter;align=left;spacingLeft=20;portConstraint=west;strokeWidth=0;";
 			typeExtenstion = "Target";
 		}		
 		
 		for(int i=0;i<commands.size();i++){
-			Command c = commands.get(i);
-			double top = (i*2+1)/(commands.size()*2.0);
+            Command c = commands.get(i);
+            double top = (i*2+1)/(commands.size()*2.0);
 			mxGeometry outGeo = new mxGeometry(xRel, top, PORT_DIAMETER, PORT_DIAMETER);
 			outGeo.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
 			outGeo.setRelative(true);
@@ -395,12 +373,10 @@ public class GraphEditor extends JPanel {
 
 			mxCell port = new mxCell(elem, outGeo,css + "fillColor="+color);
 
-
-            c.commandCell = port;
-
             port.setVertex(true);
             graph.addCell(port, parent);
             graphCommands.put(port.getId(), c);
+            c.commandCell = port;
         }
 	}
 
@@ -411,8 +387,7 @@ public class GraphEditor extends JPanel {
 		return devices.add(d);
 	}
 
-	public String getXML() throws CloneNotSupportedException {
-        int connectionId = 0;
+	public PRDAssemblyVer getXML()  {
         PRDAssemblyVer version = new PRDAssemblyVer();
         version.setFormat("3.0.14");
         DeviceID did = app.getDevice().getDeviceID();
@@ -427,6 +402,8 @@ public class GraphEditor extends JPanel {
         EventHandlerList events = new EventHandlerList();
         SynthesizedServiceList synthServices = new SynthesizedServiceList();
 
+        ArrayList<String> connectedServices = new ArrayList<String>();
+
         for(ServiceObjGUI ssObj : ssList){
             synthServices.addSynthesizedService(ssObj.ss);
         }
@@ -436,87 +413,57 @@ public class GraphEditor extends JPanel {
 
 		for(String graphId:graphDevices.keySet()){
 			GraphDevice gd = graphDevices.get(graphId);
-			if(!gd.type.equalsIgnoreCase("synthesizedservice")){
+            if(!gd.type.equalsIgnoreCase("synthesizedservice")) {
                 devices.addDeviceDecl(gd.xml);
-                for(Node node:gd.getUsedServices()){
-                    ServiceUse su = new ServiceUse(new Identifier(node.palcomServiceId));
-                    ServiceDecl decl = new ServiceDecl(new Identifier(node.palcomServiceId), node.asd);
-                    services.addServiceDecl(decl);
-                    boolean serviceHasConn = false;
-					for(Command c:node.outCommands){
-
-                        if(c.commandCell != null){
-                            EventHandlerClause ehc = new EventHandlerClause();
-
-                            Object[] edges = graph.getEdges(c.commandCell);
-                            CommandEvent ce = c.ce;
-                            ce.setServiceExp(su);
-
-                            ehc.setEvent(ce);
-
-                            if(!serviceHasConn && edges.length > 0){
-                                ConnectionDecl conn = new ConnectionDecl(su, new ThisService(), "conn-" + (++connectionId),  new Opt());
-                                connections.addConnectionDecl(conn);
-                                serviceHasConn = true;
-                            }
-                            ArrayList<Action> actions = new ArrayList<Action>();
-
-                            CommandInfo ci = ce.getCommandInfo();
-                            String paramName = null;
-                            for(int j =0;j<ci.getNumParamInfo();j++){
-                                paramName = ci.getParamInfo(j).getID();
-                                break;
-                            }
-                            for(int i=0;i<edges.length;i++){
-                                mxCell target = (mxCell)((mxCell) edges[i]).getTarget();
-                                System.out.println("Edge from: " + c.name + " to: " + target.getAttribute("name"));
-                                actions.addAll(getTargetActions(target, paramName, null));
-                            }
-                            for(Action a:actions){
-                                ehc.addAction(a);
-                            }
-                            if(actions.size() > 0){
-                                events.addEventHandlerClause(ehc);
-                            }
-
-						}else{
-							System.out.println("Commandcell is null: " + c.getName());
-						}
-					}
-				}
-			}else{
-                for(Node node:gd.getUsedServices()){
-                    for(Command c:node.outCommands){
-                        if(c.commandCell != null){
-                            EventHandlerClause ehc = new EventHandlerClause();
-                            Object[] edges = graph.getEdges(c.commandCell);
-                            CommandEvent ce = c.ce;
+            }
+            for(Node node:gd.getUsedServices()){
+                if(!gd.type.equalsIgnoreCase("synthesizedservice")){
+                    services.addServiceDecl(new ServiceDecl(new Identifier(node.palcomServiceId), node.asd));
+                }
+                for(Command c:node.outCommands){
+                    if(c.commandCell != null){
+                        EventHandlerClause ehc = new EventHandlerClause();
+                        Object[] edges = graph.getEdges(c.commandCell);
+                        CommandEvent ce = c.ce;
+                        if(gd.type.equalsIgnoreCase("synthesizedservice")){
                             ce.setServiceExp(new SynthesizedServiceUse(new Identifier(gd.id)));
-                            ehc.setEvent(ce);
-                            ArrayList<Action> actions = new ArrayList<Action>();
-                            CommandInfo ci = ce.getCommandInfo();
-                            String paramName = null;
-                            for(int j =0;j<ci.getNumParamInfo();j++){
-                                paramName = ci.getParamInfo(j).getID();
-                                break;
-                            }
-                            for(int i=0;i<edges.length;i++){
-                                mxCell target = (mxCell)((mxCell) edges[i]).getTarget();
-                                actions.addAll(getTargetActions(target, paramName, null));
-                            }
-                            for(Action a:actions){
-                                ehc.addAction(a);
-                            }
-                            if(actions.size() > 0){
-                                events.addEventHandlerClause(ehc);
-                            }
                         }else{
-                            System.out.println("Commandcell is null: " + c.getName());
+                            ServiceUse su = new ServiceUse(new Identifier(node.palcomServiceId));
+                            ce.setServiceExp(su);
+                            if(!connectedServices.contains(node.palcomServiceId)){
+                                connectedServices.add(node.palcomServiceId);
+                            }
+                        }
+                        ehc.setEvent(ce);
+                        ArrayList<Action> actions = new ArrayList<Action>();
+                        CommandInfo ci = ce.getCommandInfo();
+                        String paramName = null;
+                        for(int j =0;j<ci.getNumParamInfo();j++){
+                            paramName = ci.getParamInfo(j).getID();
+                            break;
+                        }
+                        for (Object edge : edges) {
+                            mxCell target = (mxCell) ((mxCell) edge).getTarget();
+                            actions.addAll(getTargetActions(target, paramName, null, connectedServices));
+                        }
+                        for(Action a:actions){
+                            ehc.addAction(a);
+                        }
+                        if(actions.size() > 0){
+                            events.addEventHandlerClause(ehc);
                         }
                     }
                 }
             }
 		}
+
+        int connectionId = 0;
+        for(String connService:connectedServices){
+            ServiceUse su = new ServiceUse(new Identifier(connService));
+            ConnectionDecl conn = new ConnectionDecl(su, new ThisService(), "conn-" + (++connectionId),  new Opt());
+            connections.addConnectionDecl(conn);
+        }
+
         eventHandler.setEventHandlers(events);
         eventHandler.setVariables(variables);
         version.setDevices(devices);
@@ -524,14 +471,11 @@ public class GraphEditor extends JPanel {
         version.setConnections(connections);
         version.setEventHandlerScript(eventHandler);
         version.setSynthesizedServices(synthServices);
-        System.out.println("Bam bam bammmmm");
 
-        System.out.println(version);
-
-        return version.toString();
+        return version;
 	}
 
-    private ArrayList<Action> getTargetActions(mxCell target, String paramName, String variableName) throws CloneNotSupportedException {
+    private ArrayList<Action> getTargetActions(mxCell target, String paramName, String variableName, ArrayList<String> connectedServices)  {
         ArrayList<Action> actions = new ArrayList<Action>();
         List params = new List();
         if(paramName != null){
@@ -551,13 +495,16 @@ public class GraphEditor extends JPanel {
                 Object[] edges = graph.getEdges(targetVar.getOut);
                 for(int i=0;i<edges.length;i++){
                     mxCell varTarget = (mxCell)((mxCell) edges[i]).getTarget();
-                    actions.addAll(getTargetActions(varTarget, null, targetVar.variable.getIdentifier().getID()));
+                    actions.addAll(getTargetActions(varTarget, null, targetVar.variable.getIdentifier().getID(), connectedServices));
                 }
             }
         }else if(targetCommand != null && targetCommand.awp != null){
             String actionName = targetCommand.awp.getCommand();
             if (targetCommand.awp instanceof SendMessageAction){
                 SendMessageAction sma = new SendMessageAction(actionName, params, new ServiceUse(new Identifier(targetCommand.parent.palcomServiceId)));
+                if(!connectedServices.contains(targetCommand.parent.palcomServiceId)){
+                    connectedServices.add(targetCommand.parent.palcomServiceId);
+                }
                 actions.add(sma);
             }else if(targetCommand.awp instanceof InvokeAction){
                 InvokeAction ia = new InvokeAction(actionName, params, ((InvokeAction) targetCommand.awp).getSynthesizedServiceUse(), "", new Opt(), new Opt());
@@ -585,7 +532,9 @@ public class GraphEditor extends JPanel {
         this.filename = filename;
 
 		try {
+            this.loadingAssembly = true;
 			graph.updateGraphWithData(discoveryManager.getNetwork(), assemblyData, graphData, this);
+            loadingAssembly = false;
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (AssemblyLoadException e) {
@@ -626,12 +575,14 @@ public class GraphEditor extends JPanel {
 	}
 	
 	public void addVariable(VariableObjGUI varObjGUI){
+        setUnsaved(true);
 		variableList.add(varObjGUI);
 	}
 	public void addVariable(VariableDecl varDec){
 		varPanel.addVariable(varDec);
 	}
 	public void removeVariable(VariableDecl var) {
+        setUnsaved(true);
 		for(int i = 0; i<variableList.size(); i++){
 			if(variableList.get(i).equals(var)){
 				variableList.remove(i);
@@ -644,26 +595,46 @@ public class GraphEditor extends JPanel {
 		return ssList;
 	}
 
+    private boolean deviceIdAlreadyExists(String id){
+        for(String key:graphDevices.keySet()){
+            if(graphDevices.get(key).id.equalsIgnoreCase(id)){
+                return true;
+            }
+        }
+        return false;
+    }
+
 	public GraphDevice importDevice(Point p, DeviceProxy data) throws ResourceException {
-		PalcomDevice dev = (PalcomDevice)data;
-		DeviceDecl decl = new DeviceAddressDecl(new Identifier(dev.getName()), new DeviceAddress(dev.getDeviceID()));
+        if(deviceIdAlreadyExists(data.getDeviceID().toString())){
+            System.out.println("This device is already used in the graph: " + data.getDeviceID());
+            return null;
+        }
 
-		GraphDevice gd = createGraphDevice(data.getName(), p, false, data.getDeviceID().toString(), "device", decl);
+        setUnsaved(true);
+        PalcomDevice dev = (PalcomDevice)data;
+        DeviceDecl decl = new DeviceAddressDecl(new Identifier(dev.getName()), new DeviceAddress(dev.getDeviceID()));
 
-		PalcomServiceList services = data.getServiceList();
+        GraphDevice gd = createGraphDevice(data.getName(), p, false, data.getDeviceID().toString(), "device", decl);
 
-		for (int i = 0; i < services.getNumService(); i++) {
-			recrusiveGetServices(null, gd, services.getService(i), false);
-		}
+        PalcomServiceList services = data.getServiceList();
+
+        for (int i = 0; i < services.getNumService(); i++) {
+            recrusiveGetServices(null, gd, services.getService(i), false);
+        }
 
 		return gd;
 	}
 	
-	public GraphDevice importDevice(Point p, SynthesizedService data) throws ResourceException {
-		PRDServiceFMDescription prds = data.getPRDServiceFMDescription();
+	public GraphDevice importSynthDevice(Point p, SynthesizedService data) throws ResourceException {
+        PRDServiceFMDescription prds = data.getPRDServiceFMDescription();
+        if(deviceIdAlreadyExists(prds.getID().toString())){
+            System.out.println("This synthesized service is already used in the graph: " + prds.getID());
+            return null;
+        }
 
-		GraphDevice gd = createGraphDevice(prds.getID(), p, false, prds.getID(), "synthesizedservice", null);
-		Node parent = gd.addNode(null, NodeType.SERVICE, prds.getID(),null,null);
+        setUnsaved(true);
+        GraphDevice gd = createGraphDevice(prds.getID(), p, false, prds.getID(), "synthesizedservice", null);
+		Node parent = gd.addNode(null, NodeType.SERVICE, prds.getID(), null, null);
 
 		parseCommands(parent, prds, true);
 		showService(gd, prds.getID());
@@ -672,20 +643,27 @@ public class GraphEditor extends JPanel {
 	}
 
 	public void importVariable(VariableDecl variable, Point p) {
+        for(String key:graphVariables.keySet()){
+            if(graphVariables.get(key).variable.equals(variable)){
+                System.out.println("This Variable is already used in the graph: " + variable.getIdentifier().getID());
+                return;
+            }
+        }
+
+        setUnsaved(true);
 
 		String name = variable.getIdentifier().getID();
 		String type = ((MimeType)variable.getVariableType()).getTypeName();
 
-		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", p.x, p.y, 100, 50, "verticalAlign=top;textAlign=center;fillColor=#9999FF");
+		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", p.x, p.y, 120, 70, "verticalAlign=top;textAlign=center;fillColor=#9999FF");
 		cell.setConnectable(false);
-
 
 		String css1 = "shape=ellipse;perimter=ellipsePerimeter;align=left;spacingLeft=20;portConstraint=west;";
 		String css2 = "shape=ellipse;perimter=ellipsePerimeter;align=right;spacingRight=20;portConstraint=east;";
 
-		mxGeometry geo1 = new mxGeometry(0.0, 0.25, PORT_DIAMETER, PORT_DIAMETER);
-		mxGeometry geo2 = new mxGeometry(0.0, 0.75, PORT_DIAMETER, PORT_DIAMETER);
-		mxGeometry geo3 = new mxGeometry(1.0, 0.5, PORT_DIAMETER, PORT_DIAMETER);
+		mxGeometry geo1 = new mxGeometry(0.0, 0.40, PORT_DIAMETER, PORT_DIAMETER);
+		mxGeometry geo2 = new mxGeometry(0.0, 0.80, PORT_DIAMETER, PORT_DIAMETER);
+		mxGeometry geo3 = new mxGeometry(1.0, 0.6, PORT_DIAMETER, PORT_DIAMETER);
 		geo1.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
 		geo2.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
 		geo3.setOffset(new mxPoint(-PORT_RADIUS, -PORT_RADIUS));
@@ -699,9 +677,9 @@ public class GraphEditor extends JPanel {
 		elem1.setAttribute("name", "set variable");
 		elem2.setAttribute("name", "get variable");
 		elem3.setAttribute("name", "variable");
-		mxCell port1 = new mxCell(elem1, geo1,css1 + "fillColor="+getColor(type));
-		mxCell port2 = new mxCell(elem2, geo2,css1 + "fillColor="+getColor("ping"));
-		mxCell port3 = new mxCell(elem3, geo3,css2 + "fillColor="+getColor(type));
+		mxCell port1 = new mxCell(elem1, geo1,css1 + "strokeWidth=0;fillColor="+getColor(type));
+		mxCell port2 = new mxCell(elem2, geo2,css1 + "strokeWidth=0;fillColor="+getColor("ping"));
+		mxCell port3 = new mxCell(elem3, geo3,css2 + "strokeWidth=0;fillColor="+getColor(type));
 		port1.setVertex(true);
 		port2.setVertex(true);
 		port3.setVertex(true);
@@ -715,7 +693,8 @@ public class GraphEditor extends JPanel {
 
 	public GraphDevice createGraphDevice(String name, Point p, boolean disconnected, String id, String type, DeviceDecl xml){
 		String bgType = type.equalsIgnoreCase("synthesizedservice") ? "#c4dcff" : "#99CCFF";
-		String bg = disconnected? "#A0A0A0" : bgType;
+		String bg = disconnected? "#919191;strokeColor="+disconnectedStrokeColor : bgType;
+
 		
 		mxCell cell = (mxCell) graph.insertVertex(graph.getDefaultParent(), null, "<b>" + name + "</b>", p.x, p.y, 100, 30, "verticalAlign=top;textAlign=center;fillColor="+bg);
 		cell.setConnectable(false);
@@ -772,7 +751,7 @@ public class GraphEditor extends JPanel {
         }else if(ci instanceof GroupInfo){
 			GroupInfo gi = (GroupInfo) ci;
 			for(int i=0;i<gi.getNumControlInfo();i++){
-				recursiveGetCommands(parent, gi.getControlInfo(i),isSynthesized);
+				recursiveGetCommands(parent, gi.getControlInfo(i), isSynthesized);
 			}
 		}
 	}
@@ -789,7 +768,7 @@ public class GraphEditor extends JPanel {
 				decl = new SingleServiceDecl(ps.requiresAuth(), new Identifier(serviceName), new DeviceUse(new Identifier(gd.name)), ps.getServiceID(), ps.getInstanceID().getInstanceNumber());
 			} catch (ResourceException e) {}
 
-			Node node = gd.addNode(parent, NodeType.SERVICE, psp.getName(),null, decl);
+			Node node = gd.addNode(parent, NodeType.SERVICE, psp.getName(), null, decl);
 
 			ServiceProxy sp = (ServiceProxy) psp;
 			PalcomServiceDescription psd = sp.getDescription();
@@ -810,15 +789,19 @@ public class GraphEditor extends JPanel {
 
 
 	public void clear() {
+        clearingRunning = true;
 		graphVariables.clear();
 		graphDevices.clear();
 		ssList.clear();
 		variableList.clear();
 		graph.removeCells(graph.getChildVertices(graph.getDefaultParent()));
+        clearingRunning = false;
 	}
 
 	public void setUnsaved(boolean b) {
-		assemblyPanel.setUnsaved(b);
+        if(!loadingAssembly){
+            assemblyPanel.setUnsaved(b);
+        }
 	}
 
 	public GraphVariable getVariableCell(String varName){
@@ -837,5 +820,13 @@ public class GraphEditor extends JPanel {
         if(graph.getEdgesBetween(cc.sourceCell, cc.targetCell).length == 0){
             graph.insertEdge(parent, null, "", cc.sourceCell, cc.targetCell);
         }
+    }
+
+    public void removedCell(String id) {
+        graphDevices.remove(id);
+        graphVariables.remove(id);
+        graphCommandEvents.remove(id);
+        graphActionEvents.remove(id);
+        graphCommands.remove(id);
     }
 }

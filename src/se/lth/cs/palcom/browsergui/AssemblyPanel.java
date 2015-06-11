@@ -1548,7 +1548,6 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 						Iterator it = baid.getUseMap().values().iterator();
 						for (int i = 0; it.hasNext(); ++i ) {
 							Use u = (Use) it.next();
-                            System.out.println(u);
                             if (u == null) {
 								return;
 							}
@@ -1660,11 +1659,7 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 		} else if(prevTab.equals(TAB_NAME_EDITOR)){
 			assemblyData = assemblyRoot.writeXML();
 		} else if(prevTab.equals(TAB_NAME_GRAPH)){
-            try {
-                assemblyData = assemblyGraph.getXML();
-            } catch (CloneNotSupportedException e) {
-                e.printStackTrace();
-            }
+            assemblyData = assemblyGraph.getXML().toString();
             graphData = assemblyGraph.getUpdatedGraphData();
 		}
 		
@@ -2121,13 +2116,15 @@ public class AssemblyPanel extends JPanel implements ChangeListener, MouseListen
 			String tabName = tabs.getTitleAt(tabs.getSelectedIndex());
 			if (tabName.equals(TAB_NAME_XML)) {
 				loadAssemblyTree(xmlText.getText().getBytes("UTF8"));
-			}
+			}else if(tabName.equals(TAB_NAME_GRAPH)){
+                loadAssemblyTree(assemblyGraph.getXML().toString().getBytes("UTF8"));
+            }
 			return assemblyRoot.writeXML().getBytes("UTF8");
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
-	}
+    }
 	
 	public void reloadAssembly() {
 		application.reloadAssembly(filename);

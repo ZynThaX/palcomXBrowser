@@ -20,15 +20,10 @@ public class XMLViewPanel extends JPanel implements BrowserSelectionListener {
 	}
 
 	public void resourceSelected(Resource r) {
-		System.out.println(r.getClass());
 		if(r instanceof ServiceDescriptionProxy){
 			ServiceDescriptionProxy sdp = (ServiceDescriptionProxy) r;
-//			sdp.findCommand(0)
-			System.out.println(sdp.toString());
 		}else if(r instanceof ServiceProxy){
 			ServiceProxy sp = (ServiceProxy) r;
-			
-//			sp.getDescription()
 		}
 		xml.setText(r.toString());
 	}

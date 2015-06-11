@@ -47,7 +47,7 @@ public class AssemblyGraphTransferHandler extends TransferHandler{
 			if (data instanceof DeviceProxy){
 				graphEditor.importDevice(new Point(150,(int)comp.getMousePosition().getY()),(DeviceProxy)data);
 			} else if(data2 instanceof SynthesizedService){
-				graphEditor.importDevice(new Point(150,(int)comp.getMousePosition().getY()),(SynthesizedService)data);
+				graphEditor.importSynthDevice(new Point(150,(int)comp.getMousePosition().getY()),(SynthesizedService)data);
 			} else if(data3 instanceof VariableDecl){
 				graphEditor.importVariable((VariableDecl) data3, new Point(150, (int)comp.getMousePosition().getY()));
 			}

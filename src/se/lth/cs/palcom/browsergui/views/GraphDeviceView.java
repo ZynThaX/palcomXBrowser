@@ -37,10 +37,8 @@ public class GraphDeviceView {
 		mxCell removeCell;
 
 		public RemoveServiceMenu(mxCell rmC){
-			System.out.println(rmC.getClass());
 			removeCell = rmC;
 			removeItem = new JMenuItem("Remove");
-
 			removeItem.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 					String parentId = removeCell.getParent().getId();

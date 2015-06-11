@@ -37,7 +37,7 @@ public class AssemblyDockable extends EnvironmentDockable implements SaveStatusL
 				ap.saveAssembly();
 			} else {
 				ap.setUnsaved(false);
-				ap.reloadAssembly();
+//				ap.reloadAssembly();
 			}
 		}
 	}

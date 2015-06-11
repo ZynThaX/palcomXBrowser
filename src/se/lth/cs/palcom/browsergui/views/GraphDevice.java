@@ -227,7 +227,8 @@ public class GraphDevice implements Comparable {
 		}
 
 		public void removeCommandCells() {
-			for(Command c:inCommands){
+            System.out.println("############ REMOVING ######");
+            for(Command c:inCommands){
 				c.commandCell = null;
 			}
 			for(Command c:outCommands){

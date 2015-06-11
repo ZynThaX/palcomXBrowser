@@ -33,6 +33,17 @@ public class AwesomemxGraph extends mxGraph {
 		this.ge = ge;
 	}
 
+    public void cellsRemoved(Object[] cells){
+        super.cellsRemoved(cells);
+        for(Object o:cells){
+            mxCell cell = (mxCell) o;
+            ge.removedCell(cell.getId());
+        }
+        if(!ge.clearingRunning){
+            ge.setUnsaved(true);
+        }
+    }
+
 	public void cellsMoved(Object[] cells,
 						   double dx,
 						   double dy,
@@ -40,14 +51,7 @@ public class AwesomemxGraph extends mxGraph {
 						   boolean constrain){
 		super.cellsMoved(cells, dx,dy,disconnect,constrain);
 		ge.setUnsaved(true);
-
 	}
-//	public
-//	public boolean isPort(Object cell)
-//	{
-//		mxGeometry geo = getCellGeometry(cell);
-//		return (geo != null) ? geo.isRelative() : false;
-//	}
 	public String getToolTipForCell(Object cell)
 	{
 		if (model.isEdge(cell))
@@ -56,13 +60,16 @@ public class AwesomemxGraph extends mxGraph {
 				convertValueToString(model.getTerminal(cell, false));
 		}
 		if(cell instanceof mxCell){
-			Object value = ((mxCell) cell).getValue();
-			if (value instanceof Element){
-				Element elt = (Element) value;
-				if(elt.getAttributeNode("name") !=  null){
-					return elt.getAttribute("name");
-				}
-			}
+            mxCell mxcell = (mxCell) cell;
+            if(!mxcell.getId().equals("1")){
+                Object value = ((mxCell) cell).getValue();
+                if (value instanceof Element){
+                    Element elt = (Element) value;
+                    if(elt.getAttributeNode("name") !=  null){
+                        return elt.getAttribute("name");
+                    }
+                }
+            }
 		}
 		return super.getToolTipForCell(cell);
 	}
@@ -97,13 +104,7 @@ public class AwesomemxGraph extends mxGraph {
 
 	
 	public void updateGraphWithData(PalcomNetwork pcn, String assemblyData, GraphObjectsHandler graphData, GraphEditor ge) throws IOException, AssemblyLoadException, XmlPullParserException, ResourceException {
-		//se OldschoolAssemblyLoader
-
 		ge.clear();
-
-		//TODO, ta bort gammal data ut grafen och data-objekten
-
-		XmlPullParser factory = new KXmlParser();
 		int topPos = 10;
 		TreeMap<String, GraphDevice> devices = new TreeMap<String, GraphDevice>();
 		TreeMap<GraphDevice, ArrayList<String>> servicesToAdd = new TreeMap<GraphDevice, ArrayList<String>>();
@@ -112,18 +113,11 @@ public class AwesomemxGraph extends mxGraph {
 
 		se.lth.cs.palcom.common.collections.List networkDevices = pcn.getDevices();
 
-//		ArrayList<Connection> messageEvents = new ArrayList<Connection>();
-//		ArrayList<VarConnection> variableAssignments = new ArrayList<VarConnection>();
 		ArrayList<CellConnection> cellConnections = new ArrayList<CellConnection>();
 
 		byte[] xmlBytes = assemblyData.getBytes("UTF8");
 		PRDAssemblyD assembly = OldschoolAssemblyLoader.parseAssembly(xmlBytes, 0, xmlBytes.length, null);
 		PRDAssemblyVer version = assembly.getPRDAssemblyVer(0);
-
-
-
-		factory.setInput(new InputStreamReader(new ByteArrayInputStream(xmlBytes, 0, xmlBytes.length)));
-		factory.nextTag();
 
 
 		DeviceDeclList xmlDevices = version.getDevices();
@@ -167,6 +161,17 @@ public class AwesomemxGraph extends mxGraph {
 			}
 		}
 
+        VariableList variables = version.getEventHandlerScript().getVariables();
+        for(int i=0;i<variables.getNumVariableDecl();i++){
+            VariableDecl vd = variables.getVariableDecl(i);
+            ge.addVariable(vd);
+
+            Point p = graphData.getObjectPoint(vd.getIdentifier().getID(), "variable");
+            if (p != null){
+                ge.importVariable(vd, p);
+            }
+        }
+
 
 		ServiceDeclList services = version.getServices();
 		for(int i=0;i<services.getNumServiceDecl();i++){
@@ -186,11 +191,7 @@ public class AwesomemxGraph extends mxGraph {
                     serviceNodes.put(palcomServiceId, node);
                     if(gd.disconnected){
                         ge.updateServiceId(palcomServiceId);
-//                        System.out.println("Scanning commands from disconnectd device: " + gd.name + " - " + gd.disconnected);
                         parseAndAddCommands(node, palcomServiceId, version);
-
-                    }else{
-                        //TODO, show all commands for node???
                     }
                     if(servicesToAdd.containsKey(gd)){
 						servicesToAdd.get(gd).add(serviceName);
@@ -204,38 +205,11 @@ public class AwesomemxGraph extends mxGraph {
 		}
 
 
-//		version.getEventHandlerScript().getVariables()
-
-		xmlGoTo(factory, "EventHandlerScript");
-
-		xmlGoTo(factory, "VariableList");
-		factory.nextTag();
-		while(!factory.getName().equals("VariableList")){
-			String type = factory.getAttributeValue("", "type");
-			String id = factory.getAttributeValue("", "identifier");
-			if(factory.getName().equals("VariableDecl") && type != null && id != null){
-				VariableDecl vd =  new VariableDecl();
-				vd.initializeFromElement(factory);
-				ge.addVariable(vd);
-				Point p = graphData.getObjectPoint(id, "variable");
-				if (p != null){
-					ge.importVariable(vd, p);
-				}
-
-			}
-			factory.nextTag();
-		}
-
-
-		xmlGoTo(factory,"EventHandlerList");
-		factory.nextTag();
-
-
 
 		for(GraphDevice gd:servicesToAdd.keySet()){
 			ArrayList<String> nodes = servicesToAdd.get(gd);
 			for(String nodeName:nodes){
-				ge.showService(gd.getId(), nodeName);
+                ge.showService(gd.getId(), nodeName);
 			}
 		}
 
@@ -245,12 +219,12 @@ public class AwesomemxGraph extends mxGraph {
 			SynthesizedService ss = sdl.getSynthesizedService(i);
 			ge.addSynthService(ss);
 			Point p = graphData.getObjectPoint(ss.getPRDServiceFMDescription().getID(), "synthesizedservice");
-			if (p == null) p = new Point(100,100);
-			if(p != null){
-				GraphDevice gd = ge.importDevice(p,ss);
-				synthServices.put(ss.getPRDServiceFMDescription().getID(), gd.root.children.get(0));
-			}
-		}
+			if (p != null){
+                GraphDevice gd = ge.importSynthDevice(p, ss);
+                synthServices.put(ss.getPRDServiceFMDescription().getID(), gd.root.children.get(0));
+            }
+//                p = new Point(100,100);
+        }
 
 		EventHandlerList events = version.getEventHandlerScript().getEventHandlers();
 
@@ -260,23 +234,26 @@ public class AwesomemxGraph extends mxGraph {
 			if(event instanceof EventHandlerClause){
 				EventHandlerClause ehc = (EventHandlerClause) event;
 				CommandEvent ev = (CommandEvent)ehc.getEvent();
+                String sourceId = ev.getServiceExp().getIdentifier().getID();
+                String paramId = null;
+                CommandInfo ci = ev.getCommandInfo();
 
-				String sourceId = ev.getServiceExp().getIdentifier().getID();
-				String paramId = null;
-				CommandInfo ci = ev.getCommandInfo();
-
-				for(int j =0;j<ci.getNumParamInfo();j++){
+                for(int j =0;j<ci.getNumParamInfo();j++){
 					type = ci.getParamInfo(j).getType();
 					break;
 				}
 
-				Node sourceNode = (ev.getServiceExp() instanceof SynthesizedServiceUse)?synthServices.get(sourceId):serviceNodes.get(sourceId);
-				if(sourceNode != null)
+
+                Node sourceNode = (ev.getServiceExp() instanceof SynthesizedServiceUse)?synthServices.get(sourceId):serviceNodes.get(sourceId);
+                if(sourceNode != null){
                     sourceNode.addOutCommand(ci.getName(), type, ev);
+                }
+
+
 
                 mxCell sourceCell = sourceNode.getCommandCell(ev.getCommandName());
 
-				for(int j=0;j<ci.getNumParamInfo();j++){
+                for(int j=0;j<ci.getNumParamInfo();j++){
 					ParamInfo pi = ci.getParamInfo(j);
 					paramId = pi.getID();
 					//TODO, kan det finnas flera parametrar i en event clause?
@@ -289,10 +266,10 @@ public class AwesomemxGraph extends mxGraph {
                         AssignAction aa = (AssignAction)act;
 						String varName = aa.getVariableUse().getName();
 						if(aa.getParamUse().getName().equalsIgnoreCase(paramId)){
-							GraphVariable gv = ge.getVariableCell(varName);
-							if(gv != null){
-								targetCell = gv.setVar;
-							}
+                            GraphVariable gv = ge.getVariableCell(varName);
+                            if(gv != null){
+                                targetCell = gv.setVar;
+                            }
 						}
 					}else{
                         ActionWithParams awp = (ActionWithParams) act;
@@ -335,7 +312,7 @@ public class AwesomemxGraph extends mxGraph {
         EventHandlerList events = version.getEventHandlerScript().getEventHandlers();
 
         for(int i = 0;i<events.getChild(0).getNumChild();i++) {
-            String type = "ping";
+            String sourceType = "ping";
             ASTNode event = events.getChild(0).getChild(i);
             if (event instanceof EventHandlerClause) {
                 EventHandlerClause ehc = (EventHandlerClause) event;
@@ -347,11 +324,11 @@ public class AwesomemxGraph extends mxGraph {
                 CommandInfo ci = ev.getCommandInfo();
                 for(int j =0;j<ci.getNumParamInfo();j++){
                     ParamInfo pinfo = ci.getParamInfo(j);
-                    type = pinfo.getType();
+                    sourceType = pinfo.getType();
                     break;
                 }
                 if(sourceId.equalsIgnoreCase(palcomServiceId)){
-                    node.addOutCommand(sourceCommand, type, ev);
+                    node.addOutCommand(sourceCommand, sourceType, ev);
                 }
 
                 for (int j = 0; j < ehc.getNumAction(); ++j) {
@@ -362,15 +339,18 @@ public class AwesomemxGraph extends mxGraph {
                         String targetCommand = sma.getCommand();
 
                         if(targetId.equalsIgnoreCase(palcomServiceId)){
-                            type = "ping";
-
+                            String targetType = "ping";
                             if(sma.getNumParamValue() > 0){
                                 String paramName = sma.getParamValue(0).getName();
                                 GraphVariable gv = ge.getVariableCell(paramName);
-                                type = ((MimeType)gv.variable.getVariableType()).getTypeName();
+                                if(gv != null){
+                                    targetType = ((MimeType)gv.variable.getVariableType()).getTypeName();
+                                }else{
+                                    targetType = sourceType;
+                                }
                             }
 
-                            node.addInCommand(targetCommand, type, sma);
+                            node.addInCommand(targetCommand, targetType, sma);
                         }
                     }
                 }
@@ -384,11 +364,6 @@ public class AwesomemxGraph extends mxGraph {
 		public CellConnection(mxCell sourceCell, mxCell targetCell){
 			this.sourceCell = sourceCell;
 			this.targetCell = targetCell;
-		}
-	}
-	private void xmlGoTo(XmlPullParser factory, String tagName) throws XmlPullParserException, IOException{
-		while(!factory.getName().equals(tagName)){
-			factory.nextTag();
 		}
 	}
 }
