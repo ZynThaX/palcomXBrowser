@@ -25,11 +25,11 @@ import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
 import com.mxgraph.view.mxGraph;
 
-public class AwesomemxGraph extends mxGraph {
+public class AssemblyGraph extends mxGraph {
 
 	private final GraphEditor ge;
 
-	public AwesomemxGraph(GraphEditor ge){
+	public AssemblyGraph(GraphEditor ge){
 		this.ge = ge;
 	}
 
@@ -190,7 +190,7 @@ public class AwesomemxGraph extends mxGraph {
                     Node node = gd.findOrAddNode(serviceName, ge, palcomServiceId, abstractServiceDecl);
                     serviceNodes.put(palcomServiceId, node);
                     if(gd.disconnected){
-                        ge.updateServiceId(palcomServiceId);
+                        ge.updateServiceId(palcomServiceId);//TODO, flytta upp?
                         parseAndAddCommands(node, palcomServiceId, version);
                     }
                     if(servicesToAdd.containsKey(gd)){

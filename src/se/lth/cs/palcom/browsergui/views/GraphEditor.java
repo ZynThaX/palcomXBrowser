@@ -63,7 +63,7 @@ public class GraphEditor extends JPanel {
 	private ArrayList<VariableObjGUI> variableList;
 	private String assemblyData;
 
-	private AwesomemxGraph graph;
+	private AssemblyGraph graph;
 	private TreeMap<String, GraphDevice> graphDevices;
 	private TreeMap<String, GraphVariable> graphVariables;
 	private GraphDeviceView gDV;
@@ -152,7 +152,7 @@ public class GraphEditor extends JPanel {
 		this.assemblyPanel = assemblyPanel;
 		ssList = new ArrayList<ServiceObjGUI>();
 		variableList = new ArrayList<VariableObjGUI>();
-		graph = new AwesomemxGraph(this);
+		graph = new AssemblyGraph(this);
 		graphDevices = new TreeMap<String, GraphDevice>();
 		graphVariables = new TreeMap<String, GraphVariable>();
 		gDV = new GraphDeviceView(this);
@@ -815,7 +815,7 @@ public class GraphEditor extends JPanel {
 		return null;
 	}
 
-	public void addCellConnection(AwesomemxGraph.CellConnection cc) {
+	public void addCellConnection(AssemblyGraph.CellConnection cc) {
 		Object parent = graph.getDefaultParent();
         if(graph.getEdgesBetween(cc.sourceCell, cc.targetCell).length == 0){
             graph.insertEdge(parent, null, "", cc.sourceCell, cc.targetCell);
